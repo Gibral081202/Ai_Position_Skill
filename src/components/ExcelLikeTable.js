@@ -26,18 +26,20 @@ const ExcelLikeTable = () => {
         niceToHave: []
       },
       assessments: {
-        education: { rating: '', justification: '', recommendation: '' },
-        experience: { rating: '', justification: '', recommendation: '' },
+        education: { justification: '', recommendation: '' },
+        experience: { justification: '', recommendation: '' },
         skills: { 
-          rating: '', 
           justification: '', 
           recommendation: '',
           hardSkills: [],
-          softSkills: []
+          hardSkillsRatings: {},
+          softSkills: [],
+          softSkillsRatings: {}
         }
       },
       safetyTraining: [],
-      technicalTools: []
+      technicalTools: [],
+      technicalToolsRatings: {}
     }
   ]);
 
@@ -94,6 +96,7 @@ const ExcelLikeTable = () => {
       const assessment = await assessPositionQualifications(formData);
       
       if (assessment) {
+        console.log('Assessment received:', assessment); // Debug log
         setRows(prev => prev.map(r => 
           r.id === rowId 
             ? {
@@ -105,18 +108,26 @@ const ExcelLikeTable = () => {
                   niceToHave: assessment.recommendedQualifications?.niceToHave || []
                 },
                 assessments: {
-                  education: assessment.assessments?.Education || { rating: '', justification: '', recommendation: '' },
-                  experience: assessment.assessments?.Experience || { rating: '', justification: '', recommendation: '' },
-                  skills: assessment.assessments?.Skills || { 
-                    rating: '', 
-                    justification: '', 
-                    recommendation: '',
-                    hardSkills: [],
-                    softSkills: []
+                  education: {
+                    justification: assessment.assessments?.Education?.justification || '',
+                    recommendation: assessment.assessments?.Education?.recommendation || ''
+                  },
+                  experience: {
+                    justification: assessment.assessments?.Experience?.justification || '',
+                    recommendation: assessment.assessments?.Experience?.recommendation || ''
+                  },
+                  skills: {
+                    justification: assessment.assessments?.Skills?.justification || '',
+                    recommendation: assessment.assessments?.Skills?.recommendation || '',
+                    hardSkills: assessment.assessments?.Skills?.hardSkills || [],
+                    hardSkillsRatings: assessment.assessments?.Skills?.hardSkillsRatings || {},
+                    softSkills: assessment.assessments?.Skills?.softSkills || [],
+                    softSkillsRatings: assessment.assessments?.Skills?.softSkillsRatings || {}
                   }
                 },
                 safetyTraining: assessment.assessments?.Certifications?.requiredCertifications || [],
-                technicalTools: assessment.assessments?.['Technical Tools']?.requiredTools || []
+                technicalTools: assessment.assessments?.['Technical Tools']?.requiredTools || [],
+                technicalToolsRatings: assessment.assessments?.['Technical Tools']?.toolRatings || {}
               }
             : r
         ));
@@ -142,28 +153,78 @@ const ExcelLikeTable = () => {
         niceToHave: []
       },
       assessments: {
-        education: { rating: '', justification: '', recommendation: '' },
-        experience: { rating: '', justification: '', recommendation: '' },
+        education: { justification: '', recommendation: '' },
+        experience: { justification: '', recommendation: '' },
         skills: { 
-          rating: '', 
           justification: '', 
           recommendation: '',
           hardSkills: [],
-          softSkills: []
+          hardSkillsRatings: {},
+          softSkills: [],
+          softSkillsRatings: {}
         }
       },
       safetyTraining: [],
-      technicalTools: []
+      technicalTools: [],
+      technicalToolsRatings: {}
     }]);
   };
 
   const renderChips = (items, className = '') => {
     if (!Array.isArray(items) || items.length === 0) return '';
-    return items.map((item, index) => (
-      <span key={index} className={`excel-chip ${className}`}>
-        {item}
-      </span>
-    ));
+    return (
+      <div className="excel-chip-container">
+        {items.map((item, index) => (
+          <span key={index} className={`excel-chip ${className}`}>
+            {item}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  const renderSkillsWithRatings = (skills, ratings, className = '') => {
+    if (!Array.isArray(skills) || skills.length === 0) return '';
+    console.log('Skills:', skills, 'Ratings:', ratings); // Debug log
+    return (
+      <div className="excel-chip-container">
+        {skills.map((skill, index) => {
+          const rating = ratings && ratings[skill] ? ratings[skill] : null;
+          return (
+            <div key={index} className="skill-item" style={{ marginBottom: '4px', width: '100%' }}>
+              <span className={`excel-chip ${className}`}>
+                {skill}
+                {rating && (
+                  <span className="skill-rating"> ({rating}/10)</span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderToolsWithRatings = (tools, ratings) => {
+    if (!Array.isArray(tools) || tools.length === 0) return '';
+    console.log('Tools:', tools, 'Tool Ratings:', ratings); // Debug log
+    return (
+      <div className="excel-chip-container">
+        {tools.map((tool, index) => {
+          const rating = ratings && ratings[tool] ? ratings[tool] : null;
+          return (
+            <div key={index} className="tool-item" style={{ marginBottom: '4px', width: '100%' }}>
+              <span className="excel-chip">
+                {tool}
+                {rating && (
+                  <span className="tool-rating"> ({rating}/10)</span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   const renderSelect = (rowId, field, value, options) => {
@@ -218,7 +279,7 @@ const ExcelLikeTable = () => {
         </button>
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
+      <div className="excel-table-wrapper">
         <table className="excel-table">
           <thead>
             <tr>
@@ -262,12 +323,12 @@ const ExcelLikeTable = () => {
                 <td className="col-overall-assessment">
                   <div className="excel-data-cell">
                     {loading[row.id] ? (
-                      <Box display="flex" justifyContent="center" alignItems="center" height="40px">
-                        <CircularProgress size={16} />
+                      <Box display="flex" justifyContent="center" alignItems="center" height="80px">
+                        <CircularProgress size={20} />
                       </Box>
                     ) : (
                       <>
-                        <div style={{ marginBottom: '5px' }}>
+                        <div style={{ marginBottom: '8px' }}>
                           {row.overallAssessment && (
                             <span className={`excel-status ${row.overallAssessment ? 'complete' : 'incomplete'}`}>
                               {row.overallAssessment ? 'Generated' : 'Pending'}
@@ -275,16 +336,15 @@ const ExcelLikeTable = () => {
                           )}
                         </div>
                         <button
-                          className="excel-button"
+                          className="excel-button generate-button"
                           onClick={() => generateAssessment(row.id)}
                           disabled={!row.positionTitle || !row.positionLevel || loading[row.id]}
-                          style={{ fontSize: '10px', padding: '4px 8px' }}
                         >
-                          Generate
+                          Generate Assessment
                         </button>
                         {row.overallAssessment && (
-                          <div style={{ marginTop: '5px', fontSize: '10px', color: '#666' }}>
-                            {row.overallAssessment.substring(0, 100)}...
+                          <div className="assessment-text">
+                            {row.overallAssessment}
                           </div>
                         )}
                       </>
@@ -308,36 +368,48 @@ const ExcelLikeTable = () => {
                 </td>
                 <td className="col-education">
                   <div className="excel-data-cell">
-                    {row.assessments.education.rating && (
+                    {(row.assessments.education.justification || row.assessments.education.recommendation) && (
                       <>
-                        <div><strong>Rating:</strong> {row.assessments.education.rating}/10</div>
-                        <div style={{ fontSize: '9px', marginTop: '2px' }}>
-                          {row.assessments.education.recommendation?.substring(0, 80)}...
-                        </div>
+                        {row.assessments.education.justification && (
+                          <div className="assessment-text">
+                            <strong>Reason:</strong> {row.assessments.education.justification}
+                          </div>
+                        )}
+                        {row.assessments.education.recommendation && (
+                          <div className="assessment-text">
+                            <strong>Recommendation:</strong> {row.assessments.education.recommendation}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
                 </td>
                 <td className="col-experience">
                   <div className="excel-data-cell">
-                    {row.assessments.experience.rating && (
+                    {(row.assessments.experience.justification || row.assessments.experience.recommendation) && (
                       <>
-                        <div><strong>Rating:</strong> {row.assessments.experience.rating}/10</div>
-                        <div style={{ fontSize: '9px', marginTop: '2px' }}>
-                          {row.assessments.experience.recommendation?.substring(0, 80)}...
-                        </div>
+                        {row.assessments.experience.justification && (
+                          <div className="assessment-text">
+                            <strong>Reason:</strong> {row.assessments.experience.justification}
+                          </div>
+                        )}
+                        {row.assessments.experience.recommendation && (
+                          <div className="assessment-text">
+                            <strong>Recommendation:</strong> {row.assessments.experience.recommendation}
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
                 </td>
                 <td className="col-hard-skills">
                   <div className="excel-data-cell">
-                    {renderChips(row.assessments.skills.hardSkills)}
+                    {renderSkillsWithRatings(row.assessments.skills.hardSkills, row.assessments.skills.hardSkillsRatings)}
                   </div>
                 </td>
                 <td className="col-soft-skills">
                   <div className="excel-data-cell">
-                    {renderChips(row.assessments.skills.softSkills)}
+                    {renderSkillsWithRatings(row.assessments.skills.softSkills, row.assessments.skills.softSkillsRatings)}
                   </div>
                 </td>
                 <td className="col-safety-training">
@@ -347,7 +419,7 @@ const ExcelLikeTable = () => {
                 </td>
                 <td className="col-technical-tools">
                   <div className="excel-data-cell">
-                    {renderChips(row.technicalTools)}
+                    {renderToolsWithRatings(row.technicalTools, row.technicalToolsRatings)}
                   </div>
                 </td>
               </tr>
@@ -362,11 +434,30 @@ const ExcelLikeTable = () => {
           <br />
           1. Select a Position Title and Position Level from the dropdown menus
           <br />
-          2. Click "Generate" in the Overall Assessment column to get AI-powered qualification recommendations
+          2. Click "Generate Assessment" in the Overall Assessment column to get AI-powered qualification recommendations
           <br />
           3. The system will automatically populate all qualification categories and requirements
           <br />
           4. Use "Add New Position" to compare multiple positions side by side
+        </Typography>
+      </div>
+
+      <div style={{ marginTop: '15px', padding: '15px', backgroundColor: '#e7f3ff', borderRadius: '4px', border: '1px solid #b3d9ff' }}>
+        <Typography variant="body2" color="text.primary">
+          <strong>Rating Scale Explanation (1-10):</strong>
+          <br />
+          • <strong>1-2:</strong> Basic/Beginner level - Minimal proficiency required
+          <br />
+          • <strong>3-4:</strong> Novice level - Some knowledge or training needed
+          <br />
+          • <strong>5-6:</strong> Intermediate level - Solid understanding and practical experience
+          <br />
+          • <strong>7-8:</strong> Advanced level - High proficiency and expertise required
+          <br />
+          • <strong>9-10:</strong> Expert level - Mastery and specialized knowledge essential
+          <br />
+          <br />
+          <em>Note: Ratings are applied to individual Hard Skills, Soft Skills, and Technical Tools to indicate the required proficiency level for the position.</em>
         </Typography>
       </div>
     </div>

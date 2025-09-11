@@ -223,6 +223,53 @@ const generateMockAssessment = (positionData) => {
   const certifications = getCertificationsForCategory(titleCategory);
   const tools = getToolsForCategory(titleCategory);
 
+  // Generate individual ratings for skills and tools
+  const generateSkillRatings = (skillList, baseRating) => {
+    const ratings = {};
+    skillList.forEach((skill, index) => {
+      // Create more varied and realistic ratings
+      let rating;
+      if (titleCategory === 'entry') {
+        rating = Math.max(1, Math.min(6, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else if (titleCategory === 'operator' || titleCategory === 'technician') {
+        rating = Math.max(3, Math.min(8, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else if (titleCategory === 'engineer' || titleCategory === 'geologist') {
+        rating = Math.max(5, Math.min(9, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else if (titleCategory === 'manager' || titleCategory === 'senior_manager') {
+        rating = Math.max(6, Math.min(10, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else {
+        rating = Math.max(1, Math.min(10, baseRating + Math.floor(Math.random() * 3) - 1));
+      }
+      ratings[skill] = rating;
+    });
+    return ratings;
+  };
+
+  const generateToolRatings = (toolList, baseRating) => {
+    const ratings = {};
+    toolList.forEach((tool, index) => {
+      // Create more varied and realistic ratings
+      let rating;
+      if (titleCategory === 'entry') {
+        rating = Math.max(1, Math.min(5, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else if (titleCategory === 'operator' || titleCategory === 'technician') {
+        rating = Math.max(4, Math.min(8, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else if (titleCategory === 'engineer' || titleCategory === 'geologist') {
+        rating = Math.max(6, Math.min(10, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else if (titleCategory === 'manager' || titleCategory === 'senior_manager') {
+        rating = Math.max(5, Math.min(9, baseRating + Math.floor(Math.random() * 3) - 1));
+      } else {
+        rating = Math.max(1, Math.min(10, baseRating + Math.floor(Math.random() * 3) - 1));
+      }
+      ratings[tool] = rating;
+    });
+    return ratings;
+  };
+
+  const hardSkillsRatings = generateSkillRatings(skills.hardSkills, ratings.skills);
+  const softSkillsRatings = generateSkillRatings(skills.softSkills, Math.max(1, ratings.skills - 1)); // Soft skills slightly lower
+  const toolRatings = generateToolRatings(tools, ratings.technicalTools);
+
   // Generate risk level
   const avgRating = Object.values(ratings).reduce((a, b) => a + b, 0) / 6;
   let riskLevel = 'Medium';
@@ -232,38 +279,35 @@ const generateMockAssessment = (positionData) => {
   return {
     assessments: {
       Education: {
-        rating: ratings.education,
         justification: `${positionName} positions in mining typically require ${ratings.education >= 8 ? 'advanced' : ratings.education >= 6 ? 'standard' : 'basic'} educational qualifications with focus on mining engineering or related technical fields.`,
         recommendation: ratings.education >= 8 ? "Bachelor's degree in Mining Engineering, Geology, or related field; Master's preferred for senior roles" : ratings.education >= 6 ? "Bachelor's degree in relevant engineering or technical field" : "High school diploma or trade certification adequate"
       },
       Experience: {
-        rating: ratings.experience,
         justification: `${positionName} roles require ${ratings.experience >= 8 ? 'extensive' : ratings.experience >= 6 ? 'moderate' : 'minimal'} mining industry experience with knowledge of mining operations and safety protocols.`,
         recommendation: ratings.experience >= 8 ? "10+ years mining experience with 5+ years in leadership" : ratings.experience >= 6 ? "3-7 years relevant mining experience" : "0-2 years experience, entry-level position with training provided"
       },
       Skills: {
-        rating: ratings.skills,
         justification: `${positionName} positions demand ${ratings.skills >= 8 ? 'highly developed' : ratings.skills >= 6 ? 'well-developed' : 'basic'} technical and leadership skills specific to mining operations.`,
         recommendation: ratings.skills >= 8 ? "Advanced leadership, strategic planning, and technical problem-solving skills" : ratings.skills >= 6 ? "Strong communication, teamwork, and operational skills" : "Basic technical and safety awareness skills required",
         hardSkills: skills.hardSkills,
-        softSkills: skills.softSkills
+        hardSkillsRatings: hardSkillsRatings,
+        softSkills: skills.softSkills,
+        softSkillsRatings: softSkillsRatings
       },
       'Safety Training': {
-        rating: ratings.safetyTraining,
         justification: `Mining industry ${ratings.safetyTraining >= 8 ? 'mandates extensive' : ratings.safetyTraining >= 6 ? 'requires comprehensive' : 'benefits from basic'} safety training and certifications for all personnel.`,
         recommendation: ratings.safetyTraining >= 8 ? "MSHA certification, first aid, confined space, and hazmat training required" : ratings.safetyTraining >= 6 ? "Basic MSHA training and safety certifications required" : "Basic safety orientation and ongoing training provided"
       },
       Certifications: {
-        rating: ratings.certifications,
         justification: `Mining operations ${ratings.certifications >= 7 ? 'highly value' : ratings.certifications >= 5 ? 'value' : 'may consider'} professional mining certifications and licenses for this position level.`,
         recommendation: ratings.certifications >= 7 ? "Professional Engineer (PE) license, mining certifications preferred" : ratings.certifications >= 5 ? "Relevant technical certifications beneficial" : "Certifications optional but valued for career growth",
         requiredCertifications: certifications
       },
       'Technical Tools': {
-        rating: ratings.technicalTools,
         justification: `Mining positions ${ratings.technicalTools >= 8 ? 'heavily rely on' : ratings.technicalTools >= 6 ? 'require proficiency in' : 'may use'} specialized mining software and equipment.`,
         recommendation: ratings.technicalTools >= 8 ? "Advanced proficiency in mining software (AutoCAD, Surpac, Vulcan), GIS systems" : ratings.technicalTools >= 6 ? "Proficiency in industry-standard mining software and systems" : "Basic computer skills, willingness to learn mining software",
-        requiredTools: tools
+        requiredTools: tools,
+        toolRatings: toolRatings
       }
     },
     overallAssessment: `${positionName} position in mining requires a balanced combination of qualifications with particular emphasis on ${Object.entries(ratings).sort((a, b) => b[1] - a[1])[0][0].toLowerCase()} and mining industry safety standards.`,
@@ -353,27 +397,27 @@ export const assessPositionQualifications = async (positionData) => {
 
 {
   "assessments": {
-    "Education": {"rating": number, "justification": string, "recommendation": string},
-    "Experience": {"rating": number, "justification": string, "recommendation": string},
+    "Education": {"justification": string, "recommendation": string},
+    "Experience": {"justification": string, "recommendation": string},
     "Skills": {
-      "rating": number, 
       "justification": string, 
       "recommendation": string,
       "hardSkills": [string],
-      "softSkills": [string]
+      "hardSkillsRatings": {skillName: number},
+      "softSkills": [string],
+      "softSkillsRatings": {skillName: number}
     },
-    "Safety Training": {"rating": number, "justification": string, "recommendation": string},
+    "Safety Training": {"justification": string, "recommendation": string},
     "Certifications": {
-      "rating": number, 
       "justification": string, 
       "recommendation": string,
       "requiredCertifications": [string]
     },
     "Technical Tools": {
-      "rating": number, 
       "justification": string, 
       "recommendation": string,
-      "requiredTools": [string]
+      "requiredTools": [string],
+      "toolRatings": {toolName: number}
     }
   },
   "overallAssessment": string,
@@ -391,22 +435,26 @@ Position Details:
 - Industry: Mining
 
 Rating Scale (1-10):
-- 1-3: Minimal requirements (entry level, basic qualifications sufficient)
-- 4-6: Moderate requirements (standard qualifications expected)
-- 7-8: High requirements (advanced qualifications preferred)
-- 9-10: Critical requirements (specialized/expert qualifications essential)
+- 1-2: Basic/Beginner level - Minimal proficiency required
+- 3-4: Novice level - Some knowledge or training needed
+- 5-6: Intermediate level - Solid understanding and practical experience
+- 7-8: Advanced level - High proficiency and expertise required
+- 9-10: Expert level - Mastery and specialized knowledge essential
 
 For Skills category, provide:
 - hardSkills: List of specific technical/hard skills required (e.g., "Operasi Alat Berat", "Welding", "AutoCAD")
+- hardSkillsRatings: Object with each hard skill as key and rating (1-10) as value
 - softSkills: List of interpersonal/soft skills needed (e.g., "Kepemimpinan", "Komunikasi", "Manajemen Waktu")
+- softSkillsRatings: Object with each soft skill as key and rating (1-10) as value
+
+For Technical Tools category, provide:
+- requiredTools: List of specific software/tools/equipment (e.g., "Surpac", "AutoCAD", "SCADA System")
+- toolRatings: Object with each tool as key and required proficiency rating (1-10) as value
 
 For Certifications category, provide:
 - requiredCertifications: List of specific certificates needed (e.g., "MSHA Certificate", "SIO Alat Berat", "Welding Certificate")
 
-For Technical Tools category, provide:
-- requiredTools: List of specific software/tools/equipment (e.g., "Surpac", "AutoCAD", "SCADA System")
-
-Please provide ratings (1-10) for each qualification category specific to mining industry requirements, with justifications and recommendations in Indonesian. Consider mining safety standards, industry regulations, and typical career progression paths. Use "Rendah", "Sedang", or "Tinggi" for riskLevel.`;
+Please provide detailed ratings for each individual skill and tool specific to mining industry requirements, with justifications and recommendations in Indonesian. Consider mining safety standards, industry regulations, and typical career progression paths. Use "Rendah", "Sedang", or "Tinggi" for riskLevel.`;
 
       const response = await callGeminiAPI(prompt);
       

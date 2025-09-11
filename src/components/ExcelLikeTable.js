@@ -10,7 +10,7 @@ import {
   ListSubheader
 } from '@mui/material';
 import * as XLSX from 'xlsx';
-import { assessPositionQualifications } from '../services/geminiService';
+import { assessPositionQualifications, generateSkillsAndToolsOptions } from '../services/geminiService';
 import '../excel-theme.css';
 
 const ExcelLikeTable = () => {
@@ -45,6 +45,8 @@ const ExcelLikeTable = () => {
   ]);
 
   const [loading, setLoading] = useState({});
+  const [skillsAndToolsOptions, setSkillsAndToolsOptions] = useState(null);
+  const [generatingOptions, setGeneratingOptions] = useState(false);
 
   // Predefined options - Mining Industry Focus
   const positionTitles = [
@@ -137,6 +139,20 @@ const ExcelLikeTable = () => {
       console.error('Assessment error:', error);
     } finally {
       setLoading(prev => ({ ...prev, [rowId]: false }));
+    }
+  };
+
+  // Generate Skills and Tools Options using LLM
+  const generateOptions = async () => {
+    setGeneratingOptions(true);
+    try {
+      const options = await generateSkillsAndToolsOptions();
+      setSkillsAndToolsOptions(options);
+      console.log('Generated Skills and Tools Options:', options);
+    } catch (error) {
+      console.error('Error generating options:', error);
+    } finally {
+      setGeneratingOptions(false);
     }
   };
 
@@ -423,6 +439,24 @@ const ExcelLikeTable = () => {
         </button>
         <button 
           className="excel-button" 
+          onClick={generateOptions}
+          disabled={generatingOptions}
+          style={{ 
+            backgroundColor: generatingOptions ? '#6c757d' : '#28a745',
+            cursor: generatingOptions ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {generatingOptions ? (
+            <>
+              <CircularProgress size={16} color="inherit" style={{ marginRight: '8px' }} />
+              Generating...
+            </>
+          ) : (
+            'Generate Skills & Tools Options'
+          )}
+        </button>
+        <button 
+          className="excel-button" 
           onClick={exportToExcel}
           disabled={!hasDataForExport()}
           style={{ 
@@ -615,6 +649,128 @@ const ExcelLikeTable = () => {
           <em>Note: Ratings are applied to individual Hard Skills, Soft Skills, and Technical Tools to indicate the required proficiency level for the position.</em>
         </Typography>
       </div>
+
+      {/* Generated Skills and Tools Options Display */}
+      {skillsAndToolsOptions && (
+        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#f0f8ff', borderRadius: '8px', border: '2px solid #4caf50' }}>
+          <Typography variant="h6" color="primary" style={{ marginBottom: '15px' }}>
+            🤖 AI-Generated Skills and Tools Options
+          </Typography>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            {/* Technical Skills */}
+            <div>
+              <Typography variant="subtitle1" style={{ fontWeight: 'bold', color: '#1976d2', marginBottom: '10px' }}>
+                Technical Skills
+              </Typography>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#2e7d32' }}>Required:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.technicalSkills.required.map((skill, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{skill}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#f57c00' }}>Preferred:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.technicalSkills.preferred.map((skill, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{skill}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#9c27b0' }}>Additional Options:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.technicalSkills.additional.map((skill, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{skill}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Soft Skills */}
+            <div>
+              <Typography variant="subtitle1" style={{ fontWeight: 'bold', color: '#1976d2', marginBottom: '10px' }}>
+                Soft Skills
+              </Typography>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#2e7d32' }}>Required:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.softSkills.required.map((skill, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{skill}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#f57c00' }}>Preferred:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.softSkills.preferred.map((skill, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{skill}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#9c27b0' }}>Additional Options:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.softSkills.additional.map((skill, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{skill}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Technical Tools */}
+            <div>
+              <Typography variant="subtitle1" style={{ fontWeight: 'bold', color: '#1976d2', marginBottom: '10px' }}>
+                Technical Tools
+              </Typography>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#2e7d32' }}>Required:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.technicalTools.required.map((tool, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{tool}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#f57c00' }}>Preferred:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.technicalTools.preferred.map((tool, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{tool}</li>
+                  ))}
+                </ul>
+              </div>
+              
+              <div>
+                <Typography variant="subtitle2" style={{ fontWeight: 'bold', color: '#9c27b0' }}>Additional Options:</Typography>
+                <ul style={{ margin: '5px 0', paddingLeft: '20px' }}>
+                  {skillsAndToolsOptions.technicalTools.additional.map((tool, index) => (
+                    <li key={index} style={{ fontSize: '14px', marginBottom: '2px' }}>{tool}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff3e0', borderRadius: '4px' }}>
+            <Typography variant="caption" style={{ fontStyle: 'italic' }}>
+              {skillsAndToolsOptions.isMockData ? 
+                '⚠️ This data was generated using fallback options (API unavailable)' : 
+                '✅ This data was generated using AI-powered analysis'
+              }
+            </Typography>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

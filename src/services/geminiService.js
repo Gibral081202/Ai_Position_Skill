@@ -154,36 +154,117 @@ const generateMockAssessment = (positionData) => {
   const getSkillsForCategory = (category) => {
     const skillsMap = {
       'entry': {
-        hardSkills: ['Keselamatan Kerja Dasar', 'Penggunaan APD', 'Prosedur Operasional Standar'],
-        softSkills: ['Disiplin', 'Kerjasama Tim', 'Komunikasi Dasar', 'Kepatuhan Terhadap Instruksi']
+        hardSkills: [
+          'Keselamatan Kerja Dasar', 'Penggunaan APD', 'Prosedur Operasional Standar', 
+          'Pengenalan Alat Tambang', 'Sistem Komunikasi Radio', 'Dasar-dasar Geologi', 
+          'Pemahaman SOP Tambang', 'Identifikasi Bahaya', 'Prosedur Evakuasi Darurat', 
+          'Penggunaan Peralatan K3', 'Dasar Survei Tambang', 'Pembacaan Peta Tambang',
+          'Pengoperasian Alat Sederhana', 'Pemeliharaan Alat Dasar', 'Dokumentasi Kerja'
+        ],
+        softSkills: [
+          'Disiplin', 'Kerjasama Tim', 'Komunikasi Dasar', 'Kepatuhan Terhadap Instruksi',
+          'Tanggung Jawab', 'Kedisiplinan Waktu', 'Adaptabilitas', 'Kesabaran',
+          'Ketekunan', 'Ketelitian', 'Semangat Belajar', 'Rasa Hormat',
+          'Kerjasama Lintas Shift', 'Komunikasi Antar Departemen', 'Etika Kerja'
+        ]
       },
       'operator': {
-        hardSkills: ['Operasi Alat Berat', 'Pemeliharaan Mesin', 'Membaca Blueprint', 'Sistem Hidrolik'],
-        softSkills: ['Perhatian Detail', 'Koordinasi Tangan-Mata', 'Kemampuan Konsentrasi', 'Manajemen Waktu']
+        hardSkills: [
+          'Operasi Alat Berat', 'Pemeliharaan Mesin', 'Membaca Blueprint', 'Sistem Hidrolik',
+          'Operasi Excavator', 'Operasi Dump Truck', 'Operasi Crusher', 'Operasi Conveyor',
+          'Sistem Kontrol SCADA', 'Diagnostik Mesin', 'Perawatan Preventif', 'Troubleshooting Alat',
+          'Operasi Crane', 'Sistem Pneumatik', 'Pembacaan Instrumen'
+        ],
+        softSkills: [
+          'Perhatian Detail', 'Koordinasi Tangan-Mata', 'Kemampuan Konsentrasi', 'Manajemen Waktu',
+          'Kesabaran Operasional', 'Respons Cepat Darurat', 'Komunikasi Tim', 'Disiplin Operasi',
+          'Analisis Situasi', 'Pengambilan Keputusan Cepat', 'Kestabilan Emosi', 'Fokus Jangka Panjang',
+          'Koordinasi dengan Pengawas', 'Laporan Status', 'Kesiapsiagaan'
+        ]
       },
       'technician': {
-        hardSkills: ['Troubleshooting', 'Pemeliharaan Preventif', 'Sistem Elektrik', 'Welding', 'CAD'],
-        softSkills: ['Pemecahan Masalah', 'Komunikasi Teknis', 'Kerja Mandiri', 'Analisis']
+        hardSkills: [
+          'Troubleshooting', 'Pemeliharaan Preventif', 'Sistem Elektrik', 'Welding', 'CAD',
+          'PLC Programming', 'Sistem Instrumentasi', 'Analisis Vibration', 'Motor Control',
+          'Sistem Kontrol Otomatis', 'Kalibrasi Instrumen', 'Electrical Troubleshooting', 
+          'Mechanical Repair', 'Hydraulic System', 'Pneumatic System'
+        ],
+        softSkills: [
+          'Pemecahan Masalah', 'Komunikasi Teknis', 'Kerja Mandiri', 'Analisis',
+          'Berpikir Sistematis', 'Dokumentasi Teknis', 'Transfer Knowledge', 'Mentoring Junior',
+          'Koordinasi Tim Teknis', 'Manajemen Inventory', 'Perencanaan Kerja', 'Quality Control',
+          'Continuous Improvement', 'Inovasi Teknis', 'Safety Leadership'
+        ]
       },
       'safety': {
-        hardSkills: ['Risk Assessment', 'Audit Keselamatan', 'Emergency Response', 'Investigasi Kecelakaan'],
-        softSkills: ['Kepemimpinan', 'Komunikasi Persuasif', 'Pengambilan Keputusan', 'Manajemen Krisis']
+        hardSkills: [
+          'Risk Assessment', 'Audit Keselamatan', 'Emergency Response', 'Investigasi Kecelakaan',
+          'OHSAS 18001', 'NEBOSH Certification', 'JSA Development', 'HAZOP Analysis',
+          'Safety Training Design', 'Incident Management', 'Safety Compliance', 'Environmental Safety',
+          'Mine Rescue Operations', 'Fire Prevention', 'Gas Detection Systems'
+        ],
+        softSkills: [
+          'Kepemimpinan', 'Komunikasi Persuasif', 'Pengambilan Keputusan', 'Manajemen Krisis',
+          'Diplomasi', 'Coaching Safety', 'Influencing Skills', 'Public Speaking',
+          'Change Management', 'Cultural Transformation', 'Conflict Resolution', 'Stakeholder Engagement',
+          'Team Building', 'Motivasi Tim', 'Authority Management'
+        ]
       },
       'supervisor': {
-        hardSkills: ['Manajemen Produksi', 'Perencanaan Shift', 'Budget Management', 'KPI Monitoring'],
-        softSkills: ['Kepemimpinan Tim', 'Komunikasi Efektif', 'Negosiasi', 'Manajemen Konflik']
+        hardSkills: [
+          'Manajemen Produksi', 'Perencanaan Shift', 'Budget Management', 'KPI Monitoring',
+          'Schedule Optimization', 'Resource Planning', 'Cost Control', 'Quality Management',
+          'Performance Analysis', 'Workflow Management', 'Inventory Control', 'Maintenance Planning',
+          'Safety Management', 'Team Coordination', 'Production Reporting'
+        ],
+        softSkills: [
+          'Kepemimpinan Tim', 'Komunikasi Efektif', 'Negosiasi', 'Manajemen Konflik',
+          'Coaching dan Mentoring', 'Performance Management', 'Decision Making', 'Delegation',
+          'Motivasi Tim', 'Change Leadership', 'Stakeholder Management', 'Emotional Intelligence',
+          'Cross-functional Collaboration', 'Strategic Thinking', 'Results Orientation'
+        ]
       },
       'engineer': {
-        hardSkills: ['Design Engineering', 'Project Management', 'Technical Analysis', 'Process Optimization'],
-        softSkills: ['Pemikiran Kritis', 'Inovasi', 'Presentasi', 'Manajemen Stakeholder']
+        hardSkills: [
+          'Design Engineering', 'Project Management', 'Technical Analysis', 'Process Optimization',
+          'Mine Planning', 'Resource Modeling', 'Feasibility Studies', 'Technical Writing',
+          'Software Proficiency', 'Data Analysis', 'Statistical Analysis', 'Simulation Modeling',
+          'Equipment Selection', 'Process Design', 'Cost Engineering'
+        ],
+        softSkills: [
+          'Pemikiran Kritis', 'Inovasi', 'Presentasi', 'Manajemen Stakeholder',
+          'Problem Solving Complex', 'Strategic Planning', 'Technical Communication', 'Research Skills',
+          'Analytical Thinking', 'Creative Solutions', 'Cross-functional Leadership', 'Mentoring',
+          'Change Management', 'Continuous Learning', 'Global Perspective'
+        ]
       },
       'geologist': {
-        hardSkills: ['Geological Mapping', 'Core Logging', 'Resource Estimation', 'Geostatistics'],
-        softSkills: ['Analisis Data', 'Penelitian', 'Reporting', 'Kerja Lapangan']
+        hardSkills: [
+          'Geological Mapping', 'Core Logging', 'Resource Estimation', 'Geostatistics',
+          'Structural Geology', 'Mineralogy', 'Geochemical Analysis', 'Drilling Programs',
+          'Grade Control', 'Ore Reserve Calculation', 'Geological Modeling', 'Field Sampling',
+          'Laboratory Analysis', 'Geophysical Interpretation', 'Exploration Planning'
+        ],
+        softSkills: [
+          'Analisis Data', 'Penelitian', 'Reporting', 'Kerja Lapangan',
+          'Attention to Detail', 'Scientific Writing', 'Data Interpretation', 'Field Leadership',
+          'Cross-disciplinary Collaboration', 'Presentation Skills', 'Client Relations', 'Team Coordination',
+          'Problem Solving', 'Critical Analysis', 'Continuous Learning'
+        ]
       },
       'manager': {
-        hardSkills: ['Strategic Planning', 'Financial Management', 'Operations Management', 'Regulatory Compliance'],
-        softSkills: ['Visi Strategis', 'Pengembangan Tim', 'Negosiasi Tingkat Tinggi', 'Change Management']
+        hardSkills: [
+          'Strategic Planning', 'Financial Management', 'Operations Management', 'Regulatory Compliance',
+          'Business Development', 'Contract Negotiation', 'Risk Management', 'Change Management',
+          'Performance Management', 'Budget Planning', 'Investment Analysis', 'Market Analysis',
+          'Stakeholder Management', 'Corporate Governance', 'Legal Compliance'
+        ],
+        softSkills: [
+          'Visi Strategis', 'Pengembangan Tim', 'Negosiasi Tingkat Tinggi', 'Change Management',
+          'Executive Leadership', 'Strategic Communication', 'Board Presentations', 'Crisis Management',
+          'Cultural Transformation', 'Global Leadership', 'Innovation Leadership', 'Succession Planning',
+          'Organizational Development', 'Investor Relations', 'Industry Networking'
+        ]
       }
     };
     return skillsMap[category] || skillsMap['technician'];
@@ -192,14 +273,61 @@ const generateMockAssessment = (positionData) => {
   // Generate certifications based on position category
   const getCertificationsForCategory = (category) => {
     const certsMap = {
-      'entry': ['Sertifikat K3 Umum', 'Training Orientasi Tambang'],
-      'operator': ['SIO Alat Berat', 'Sertifikat Operator Crane', 'MSHA Training'],
-      'technician': ['Sertifikat Teknik Mesin', 'Welding Certificate', 'Electrical Safety'],
-      'safety': ['NEBOSH', 'OHSAS 18001 Lead Auditor', 'Emergency Response Team'],
-      'supervisor': ['Supervisory Management', 'ISO 45001', 'Mine Rescue Certificate'],
-      'engineer': ['Professional Engineer (PE)', 'Project Management Professional (PMP)', 'MSHA Manager Certificate'],
-      'geologist': ['Professional Geologist', 'JORC Competent Person', 'GIS Certification'],
-      'manager': ['MBA', 'Executive Leadership', 'Mine Manager Certificate']
+      'entry': [
+        'Sertifikat K3 Umum', 'Training Orientasi Tambang', 'Sertifikat P3K', 'Basic Safety Training',
+        'MSHA Part 46 Training', 'Confined Space Training', 'First Aid Certificate', 'Fire Safety Training',
+        'Chemical Hazard Awareness', 'Personal Protective Equipment Training', 'Emergency Response Training',
+        'Environmental Awareness', 'Basic Computer Skills Certificate', 'Heavy Equipment Safety', 'Mine Induction Training'
+      ],
+      'operator': [
+        'SIO Alat Berat', 'Sertifikat Operator Crane', 'MSHA Training', 'Heavy Equipment License',
+        'Forklift Operator Certificate', 'Mobile Equipment Certificate', 'Explosive Transport License',
+        'GPS System Certification', 'SCADA Operation Certificate', 'Fleet Management System Training',
+        'Maintenance Technician Level 1', 'Radio Communication License', 'Safety Observer Certificate',
+        'Equipment Inspection Certificate', 'Hydraulic System Training'
+      ],
+      'technician': [
+        'Sertifikat Teknik Mesin', 'Welding Certificate', 'Electrical Safety', 'PLC Programming Certificate',
+        'Instrumentation Technician', 'Mechanical Technician License', 'Electrical Technician License',
+        'Maintenance Planning Certificate', 'Quality Control Certificate', 'Calibration Technician',
+        'Vibration Analysis Certificate', 'Motor Control Certificate', 'Industrial Automation Certificate',
+        'Safety System Technician', 'Process Control Technician'
+      ],
+      'safety': [
+        'NEBOSH', 'OHSAS 18001 Lead Auditor', 'Emergency Response Team', 'Mine Safety Manager Certificate',
+        'MSHA Manager Certificate', 'Risk Assessment Specialist', 'Incident Investigation Certificate',
+        'JSA Facilitator Certificate', 'Safety Training Instructor', 'Environmental Auditor',
+        'Fire Prevention Certificate', 'Gas Detection Specialist', 'Confined Space Supervisor',
+        'Safety Management System Auditor', 'Occupational Health Certificate'
+      ],
+      'supervisor': [
+        'Supervisory Management', 'ISO 45001', 'Mine Rescue Certificate', 'Production Supervisor Certificate',
+        'Leadership Development Certificate', 'Team Management Certificate', 'Performance Management Training',
+        'Budget Management Certificate', 'Quality Management ISO 9001', 'Environmental Management ISO 14001',
+        'Project Management Certificate', 'Conflict Resolution Certificate', 'Communication Skills Certificate',
+        'Change Management Certificate', 'Strategic Planning Certificate'
+      ],
+      'engineer': [
+        'Professional Engineer (PE)', 'Project Management Professional (PMP)', 'MSHA Manager Certificate',
+        'Mining Engineer License', 'Professional Mining Engineer', 'Chartered Engineer', 'Six Sigma Green Belt',
+        'Lean Manufacturing Certificate', 'Design Engineering Certificate', 'Process Optimization Certificate',
+        'Environmental Engineering Certificate', 'Geotechnical Engineering Certificate', 'Structural Engineering License',
+        'Technical Writing Certificate', 'Research and Development Certificate'
+      ],
+      'geologist': [
+        'Professional Geologist', 'JORC Competent Person', 'GIS Certification', 'Certified Professional Geologist',
+        'Resource Estimation Certificate', 'Geostatistics Certificate', 'Geological Mapping Certificate',
+        'Core Logging Certificate', 'Exploration Geologist Certificate', 'Grade Control Certificate',
+        'Geochemistry Certificate', 'Structural Geology Certificate', 'Mineralogy Certificate',
+        'Geophysics Certificate', 'Environmental Geology Certificate'
+      ],
+      'manager': [
+        'MBA', 'Executive Leadership', 'Mine Manager Certificate', 'Advanced Management Program',
+        'Strategic Leadership Certificate', 'Financial Management Certificate', 'Operations Management Certificate',
+        'Change Management Certification', 'Corporate Governance Certificate', 'Risk Management Professional',
+        'Investment Analysis Certificate', 'Business Development Certificate', 'Contract Management Certificate',
+        'Stakeholder Management Certificate', 'International Business Certificate'
+      ]
     };
     return certsMap[category] || certsMap['technician'];
   };
@@ -207,14 +335,57 @@ const generateMockAssessment = (positionData) => {
   // Generate technical tools based on position category
   const getToolsForCategory = (category) => {
     const toolsMap = {
-      'entry': ['Microsoft Office', 'Sistem Radio Komunikasi', 'Peralatan K3 Dasar'],
-      'operator': ['SCADA System', 'GPS Navigation', 'Fleet Management System', 'Diagnostic Tools'],
-      'technician': ['AutoCAD', 'CMMS Software', 'Multimeter', 'PLC Programming'],
-      'safety': ['Risk Assessment Software', 'Incident Management System', 'Gas Detection Equipment'],
-      'supervisor': ['Production Planning Software', 'ERP Systems', 'KPI Dashboard', 'Shift Management Tools'],
-      'engineer': ['Surpac', 'Vulcan 3D', 'MineSight', 'MATLAB', 'Primavera P6'],
-      'geologist': ['Leapfrog Geo', 'Micromine', 'ArcGIS', 'Geostatistical Software'],
-      'manager': ['Business Intelligence Tools', 'Financial Planning Software', 'Strategic Planning Tools']
+      'entry': [
+        'Microsoft Office', 'Sistem Radio Komunikasi', 'Peralatan K3 Dasar', 'GPS Navigation',
+        'Basic Computer Skills', 'Email Communication', 'Time Tracking Systems', 'Digital Camera',
+        'Basic Surveying Tools', 'Safety Equipment', 'Communication Devices', 'Mobile Applications',
+        'Digital Forms', 'Barcode Scanners', 'Simple Database Entry'
+      ],
+      'operator': [
+        'SCADA System', 'GPS Navigation', 'Fleet Management System', 'Diagnostic Tools',
+        'Mobile Equipment Management', 'Radio Communication Systems', 'Digital Displays',
+        'Condition Monitoring Systems', 'Maintenance Management Software', 'Production Tracking Systems',
+        'Safety Monitoring Systems', 'Fuel Management Systems', 'Load Management Systems',
+        'Equipment Control Panels', 'Telematics Systems'
+      ],
+      'technician': [
+        'AutoCAD', 'CMMS Software', 'Multimeter', 'PLC Programming', 'Electrical Testing Equipment',
+        'Mechanical Tools', 'Welding Equipment', 'Diagnostic Software', 'Calibration Equipment',
+        'Vibration Analysis Tools', 'Thermal Imaging Cameras', 'Oscilloscopes', 'Power Quality Analyzers',
+        'Motor Testing Equipment', 'Hydraulic Test Equipment'
+      ],
+      'safety': [
+        'Risk Assessment Software', 'Incident Management System', 'Gas Detection Equipment',
+        'Safety Management Software', 'Training Management Systems', 'Audit Management Tools',
+        'JSA Software', 'Permit to Work Systems', 'Emergency Response Systems', 'Safety Monitoring Equipment',
+        'Environmental Monitoring Tools', 'Personal Monitoring Devices', 'Safety Communication Systems',
+        'Inspection Management Software', 'Compliance Management Systems'
+      ],
+      'supervisor': [
+        'Production Planning Software', 'ERP Systems', 'KPI Dashboard', 'Shift Management Tools',
+        'Resource Planning Systems', 'Budget Management Software', 'Performance Monitoring Tools',
+        'Quality Management Systems', 'Inventory Management Systems', 'Maintenance Planning Software',
+        'Workforce Management Systems', 'Communication Platforms', 'Reporting Tools',
+        'Document Management Systems', 'Project Management Software'
+      ],
+      'engineer': [
+        'Surpac', 'Vulcan 3D', 'MineSight', 'MATLAB', 'Primavera P6', 'AutoCAD', 'SolidWorks',
+        'Leapfrog Geo', 'Whittle', 'GEMS', 'Datamine', 'Studio 5D', 'Deswik', 'Micromine',
+        'ArcGIS', 'Python Programming', 'R Statistical Software', 'Tableau', 'Power BI'
+      ],
+      'geologist': [
+        'Leapfrog Geo', 'Micromine', 'ArcGIS', 'Geostatistical Software', 'Vulcan 3D',
+        'Surpac', 'GEMS', 'MineSight', 'Datamine', 'RockWorks', 'GOCAD', 'Petrel',
+        'GeoSoft Oasis Montaj', 'MapInfo', 'Global Mapper', 'QGIS', 'GeoPandas',
+        'Statistical Analysis Software', 'Database Management Systems'
+      ],
+      'manager': [
+        'Business Intelligence Tools', 'Financial Planning Software', 'Strategic Planning Tools',
+        'Enterprise Resource Planning', 'Customer Relationship Management', 'Project Portfolio Management',
+        'Risk Management Software', 'Performance Management Systems', 'Business Process Management',
+        'Document Management Systems', 'Communication Platforms', 'Collaboration Tools',
+        'Data Analytics Platforms', 'Forecasting Software', 'Investment Analysis Tools'
+      ]
     };
     return toolsMap[category] || toolsMap['technician'];
   };
@@ -270,6 +441,133 @@ const generateMockAssessment = (positionData) => {
   const softSkillsRatings = generateSkillRatings(skills.softSkills, Math.max(1, ratings.skills - 1)); // Soft skills slightly lower
   const toolRatings = generateToolRatings(tools, ratings.technicalTools);
 
+  // Generate comprehensive qualifications based on position category and ratings
+  const getQualificationsForCategory = (category, ratings) => {
+    const qualificationsMap = {
+      'entry': {
+        essential: [
+          ratings.education >= 6 ? "Diploma (D3) dalam Teknik Pertambangan" : "SMA/SMK Teknik",
+          ratings.experience >= 3 ? "3 tahun pengalaman sebagai teknisi tambang" : "Pengalaman kerja dasar industri",
+          "Sertifikat K3 Tambang", "Training Orientasi Tambang", "Sertifikat P3K",
+          "Basic Safety Training", "Kemampuan Menggunakan APD", "Pemahaman SOP Tambang",
+          "Kondisi Fisik Sehat", "Tidak Buta Warna", "Kemampuan Komunikasi Dasar",
+          "Kemauan Belajar Tinggi", "Disiplin Kerja", "Kemampuan Kerja Tim",
+          "Kesiapan Kerja Shift"
+        ],
+        preferred: [
+          "Pengalaman di Industri Berat", "Sertifikat Operator Alat Ringan", "Kemampuan Computer Dasar",
+          "Pengalaman Maintenance", "Sertifikat Welding Dasar", "Training K3 Lanjutan",
+          "Pengalaman Kerja Lapangan", "Kemampuan Baca Gambar Teknik", "Sertifikat Driver License",
+          "Basic English", "Pengalaman Konstruksi", "Training Environmental Awareness",
+          "Kemampuan Problem Solving", "Inisiatif Kerja", "Adaptasi Teknologi Baru"
+        ],
+        niceToHave: [
+          "Pengalaman Multi-site", "Sertifikat MSHA", "Kemampuan Bahasa Asing",
+          "Pengalaman International", "Leadership Potential", "Technical Writing Skills",
+          "Digital Literacy", "Cross-training Experience", "Mentoring Skills",
+          "Innovation Mindset", "Sustainability Awareness", "Cultural Adaptability",
+          "Emergency Response Training", "Quality Management Understanding", "Continuous Learning Attitude"
+        ]
+      },
+      'operator': {
+        essential: [
+          "Diploma (D3) Teknik Mesin/Elektro", "5 tahun pengalaman operator alat berat",
+          "SIO (Surat Izin Operator) Alat Berat", "Sertifikat K3 Operator", "MSHA Training",
+          "Kemampuan Operasi Excavator/Loader", "Pemahaman Sistem Hidrolik", "Maintenance Preventif",
+          "Kemampuan Baca Blueprint", "Radio Communication License", "Heavy Equipment License",
+          "Kondisi Fisik Prima", "Kemampuan Kerja Shift", "Perhatian Detail Tinggi",
+          "Respons Cepat Situasi Darurat"
+        ],
+        preferred: [
+          "Pengalaman Multi-equipment", "Sertifikat Crane Operator", "GPS System Training",
+          "SCADA Operation Certificate", "Fleet Management Experience", "Diagnostic Skills",
+          "Supervisor Experience", "Training and Mentoring Skills", "Quality Control Understanding",
+          "Performance Optimization Skills", "Safety Leadership", "Team Coordination",
+          "Technical Documentation", "Continuous Improvement Mindset", "Cross-functional Collaboration"
+        ],
+        niceToHave: [
+          "International Mining Experience", "Advanced Technology Training", "Remote Operation Skills",
+          "Automation System Understanding", "IoT Equipment Experience", "Predictive Maintenance Knowledge",
+          "Digital Twin Technology", "Advanced Safety Systems", "Environmental Technology",
+          "Sustainability Practices", "Innovation in Operations", "Change Management",
+          "Cultural Diversity Experience", "Language Skills", "Leadership Development"
+        ]
+      },
+      'technician': {
+        essential: [
+          "Diploma (D3) Teknik Mesin/Elektro", "5 tahun pengalaman maintenance industri",
+          "Sertifikat Teknisi Mesin/Elektro", "PLC Programming Certificate", "Welding Certificate",
+          "Electrical Safety Training", "Mechanical System Understanding", "Troubleshooting Skills",
+          "CMMS Software Proficiency", "AutoCAD Basic", "Instrumentation Knowledge",
+          "Calibration Skills", "Quality Control Understanding", "Safety System Knowledge",
+          "Technical Documentation Skills"
+        ],
+        preferred: [
+          "Bachelor Degree Teknik", "Advanced PLC Programming", "SCADA System Experience",
+          "Vibration Analysis Certificate", "Predictive Maintenance Skills", "Project Management",
+          "Training and Development Skills", "Lean Manufacturing Knowledge", "Six Sigma Training",
+          "Advanced Troubleshooting", "System Integration", "Performance Optimization",
+          "Mentor and Coaching Skills", "Cross-functional Collaboration", "Innovation Mindset"
+        ],
+        niceToHave: [
+          "Master Degree atau Professional Certification", "International Experience", "Automation Expertise",
+          "IoT and Industry 4.0 Knowledge", "Artificial Intelligence Applications", "Digital Transformation",
+          "Sustainability Engineering", "Environmental Technology", "Advanced Materials Knowledge",
+          "Research and Development", "Patent Development", "Innovation Leadership",
+          "Global Technology Trends", "Future Technology Adoption", "Change Leadership"
+        ]
+      },
+      'engineer': {
+        essential: [
+          "Bachelor Degree Teknik Pertambangan", "Professional Engineer (PE) License", "7 tahun pengalaman engineering",
+          "Project Management Professional (PMP)", "Mining Software Proficiency", "Design Engineering Skills",
+          "Technical Analysis Capability", "Feasibility Study Experience", "Regulatory Compliance Knowledge",
+          "Safety Engineering Understanding", "Environmental Engineering", "Cost Engineering",
+          "Resource Estimation", "Mine Planning", "Process Optimization"
+        ],
+        preferred: [
+          "Master Degree Engineering", "International Project Experience", "Advanced Mining Software",
+          "Research and Development", "Innovation Leadership", "Team Management", "Stakeholder Management",
+          "Business Development", "Strategic Planning", "Change Management", "Mentoring and Coaching",
+          "Technical Writing and Presentation", "Cross-cultural Communication", "Global Mining Standards",
+          "Sustainability Engineering"
+        ],
+        niceToHave: [
+          "PhD atau Advanced Research", "International Recognition", "Mining Industry Awards",
+          "Board Advisory Experience", "Startup/Innovation Experience", "Digital Transformation Leadership",
+          "Artificial Intelligence in Mining", "Automation and Robotics", "Sustainable Mining Practices",
+          "Future Mining Technologies", "Investment and Venture Capital", "Global Mining Networks",
+          "Policy and Regulation Development", "Industry Thought Leadership", "Academic Collaboration"
+        ]
+      },
+      'manager': {
+        essential: [
+          "Bachelor Degree Business/Engineering", "10+ tahun pengalaman manajemen", "MBA atau Management Degree",
+          "Mine Manager Certificate", "Strategic Planning Experience", "Financial Management Skills",
+          "Operations Management", "Team Leadership", "Stakeholder Management", "Risk Management",
+          "Performance Management", "Budget Management", "Regulatory Compliance", "Change Management",
+          "Business Development"
+        ],
+        preferred: [
+          "Advanced Management Program", "International Management Experience", "Multi-site Operations",
+          "Board Management Experience", "Investment Analysis", "Merger & Acquisition", "Corporate Strategy",
+          "Innovation Leadership", "Digital Transformation", "Sustainability Leadership", "Crisis Management",
+          "Investor Relations", "Public Speaking", "Industry Association Leadership", "Executive Coaching"
+        ],
+        niceToHave: [
+          "CEO/COO Experience", "International Board Positions", "Industry Recognition Awards",
+          "Government Advisory Roles", "Academic Collaboration", "Venture Capital Experience",
+          "Startup Investment", "Global Mining Networks", "Policy Development", "Thought Leadership",
+          "Future Industry Shaping", "Technology Disruption Leadership", "Sustainable Development Goals",
+          "Global ESG Leadership", "Innovation Ecosystem Building"
+        ]
+      }
+    };
+    return qualificationsMap[category] || qualificationsMap['technician'];
+  };
+
+  const qualifications = getQualificationsForCategory(titleCategory, ratings);
+
   // Generate risk level
   const avgRating = Object.values(ratings).reduce((a, b) => a + b, 0) / 6;
   let riskLevel = 'Medium';
@@ -313,21 +611,9 @@ const generateMockAssessment = (positionData) => {
     overallAssessment: `${positionName} position in mining requires a balanced combination of qualifications with particular emphasis on ${Object.entries(ratings).sort((a, b) => b[1] - a[1])[0][0].toLowerCase()} and mining industry safety standards.`,
     riskLevel: riskLevel,
     recommendedQualifications: {
-      essential: [
-        ratings.safetyTraining >= 8 ? "MSHA Certification" : "Basic Safety Training",
-        ratings.education >= 8 ? "Mining Engineering Degree" : "Technical Education",
-        ratings.experience >= 6 ? "Mining Industry Experience" : "Technical Experience"
-      ],
-      preferred: [
-        "Professional Certifications",
-        "Mining Software Proficiency", 
-        "Leadership Experience"
-      ],
-      niceToHave: [
-        "Multi-site Experience",
-        "International Mining Experience",
-        "Additional Safety Certifications"
-      ]
+      essential: qualifications.essential,
+      preferred: qualifications.preferred,
+      niceToHave: qualifications.niceToHave
     },
     isMockData: true // Flag to indicate this is mock data
   };
@@ -384,6 +670,240 @@ const generateMockInsights = (positionData) => {
   };
 
   return insights;
+};
+
+export const generateSkillsAndToolsOptions = async () => {
+  try {
+    // Apply rate limiting
+    await rateLimit();
+    
+    // Try real API with retry logic
+    const result = await retryWithBackoff(async () => {
+      const prompt = `You are an expert mining industry HR consultant. Generate comprehensive lists of skills and tools for mining positions. Return ONLY valid JSON without any additional text. All text content must be in Indonesian language.
+
+{
+  "technicalSkills": {
+    "required": [string],
+    "preferred": [string],
+    "additional": [string]
+  },
+  "softSkills": {
+    "required": [string],
+    "preferred": [string], 
+    "additional": [string]
+  },
+  "technicalTools": {
+    "required": [string],
+    "preferred": [string],
+    "additional": [string]
+  }
+}
+
+Please provide exactly 10-15 items for each category (required, preferred, additional) across all three skill types:
+
+TECHNICAL SKILLS:
+- Required: Essential technical/hard skills needed across most mining positions (10-15 items)
+- Preferred: Advanced technical skills that are highly valuable (10-15 items)
+- Additional: Specialized or emerging technical skills (10-15 items)
+
+SOFT SKILLS:
+- Required: Core interpersonal/professional skills needed in mining (10-15 items)
+- Preferred: Advanced soft skills for leadership and collaboration (10-15 items)
+- Additional: Specialized soft skills for modern mining environments (10-15 items)
+
+TECHNICAL TOOLS:
+- Required: Essential software/equipment/systems used in mining (10-15 items)
+- Preferred: Advanced tools and specialized software (10-15 items)
+- Additional: Emerging technologies and specialized equipment (10-15 items)
+
+Focus on mining industry specifics including safety, operations, geology, engineering, management, and emerging digital technologies. Use Indonesian language for all skill and tool names where appropriate, with English terms for software/technical tools where commonly used.`;
+
+      const response = await callGeminiAPI(prompt);
+      
+      try {
+        // Extract JSON from response if it contains extra text
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        const jsonString = jsonMatch ? jsonMatch[0] : response;
+        const parsed = JSON.parse(jsonString);
+        parsed.isMockData = false;
+        return parsed;
+      } catch (parseError) {
+        console.error('Failed to parse skills options JSON:', parseError);
+        throw new Error('Invalid response format from API');
+      }
+    });
+
+    return result;
+
+  } catch (error) {
+    console.error('Error generating skills and tools options:', error);
+    
+    // Fallback to predefined comprehensive lists
+    const fallbackOptions = {
+      technicalSkills: {
+        required: [
+          'Perencanaan dan Desain Tambang',
+          'Penilaian Geologis',
+          'Protokol dan Prosedur Keselamatan',
+          'Operasi Peralatan',
+          'Mekanika Batuan',
+          'Penanganan Bahan Peledak',
+          'Sistem Ventilasi',
+          'Kepatuhan Lingkungan',
+          'Kontrol Kualitas',
+          'Penjadwalan Produksi',
+          'Analisis Biaya',
+          'Manajemen Risiko',
+          'Estimasi Sumber Daya',
+          'Analisis Data',
+          'Manajemen Proyek'
+        ],
+        preferred: [
+          'Teknik Survei Lanjutan',
+          'Kalkulasi Cadangan Bijih',
+          'Pengolahan Mineral',
+          'Hidrogeologi',
+          'Teknik Geoteknik',
+          'Perencanaan Penutupan Tambang',
+          'Praktik Berkelanjutan',
+          'Standar Tambang Internasional',
+          'Manajemen Keselamatan Lanjutan',
+          'Sistem Otomasi',
+          'Teknologi Operasi Jarak Jauh',
+          'Pemodelan Keuangan',
+          'Kepatuhan Regulasi',
+          'Respons Darurat',
+          'Pelatihan dan Pengembangan'
+        ],
+        additional: [
+          'Penelitian dan Pengembangan',
+          'Manajemen Inovasi',
+          'Teknologi Digital Twin',
+          'Aplikasi Kecerdasan Buatan',
+          'Operasi Drone',
+          'Pemodelan 3D',
+          'Pelatihan Virtual Reality',
+          'Blockchain untuk Supply Chain',
+          'Implementasi IoT',
+          'Machine Learning',
+          'Pemeliharaan Prediktif',
+          'Ilmu Material Lanjutan',
+          'Integrasi Energi Terbarukan',
+          'Pengurangan Jejak Karbon',
+          'Prinsip Ekonomi Sirkular'
+        ]
+      },
+      softSkills: {
+        required: [
+          'Keterampilan Komunikasi',
+          'Pemecahan Masalah',
+          'Berpikir Kritis',
+          'Kerja Tim',
+          'Kepemimpinan',
+          'Manajemen Waktu',
+          'Adaptabilitas',
+          'Pengambilan Keputusan',
+          'Perhatian terhadap Detail',
+          'Bekerja di Bawah Tekanan',
+          'Resolusi Konflik',
+          'Layanan Pelanggan',
+          'Keandalan',
+          'Inisiatif',
+          'Kesadaran Keselamatan'
+        ],
+        preferred: [
+          'Perencanaan Strategis',
+          'Mentoring dan Coaching',
+          'Komunikasi Lintas Budaya',
+          'Keterampilan Negosiasi',
+          'Berbicara di Depan Umum',
+          'Manajemen Stakeholder',
+          'Manajemen Perubahan',
+          'Kecerdasan Emosional',
+          'Pemecahan Masalah Kreatif',
+          'Berpikir Analitis',
+          'Delegasi',
+          'Manajemen Kinerja',
+          'Networking',
+          'Kesadaran Budaya',
+          'Manajemen Stres'
+        ],
+        additional: [
+          'Kepemimpinan Inovasi',
+          'Literasi Digital',
+          'Pola Pikir Global',
+          'Berpikir Kewirausahaan',
+          'Design Thinking',
+          'Systems Thinking',
+          'Keterampilan Siap Masa Depan',
+          'Pola Pikir Berkelanjutan',
+          'Pengambilan Keputusan Etis',
+          'Diversitas dan Inklusi',
+          'Metodologi Agile',
+          'Pembelajaran Berkelanjutan',
+          'Komunikasi Digital',
+          'Kolaborasi Jarak Jauh',
+          'Pengambilan Keputusan Berbasis Data'
+        ]
+      },
+      technicalTools: {
+        required: [
+          'AutoCAD',
+          'Surpac',
+          'MineSight',
+          'Vulcan',
+          'Deswik',
+          'Microsoft Office Suite',
+          'Sistem Manajemen Keselamatan',
+          'Sistem GPS/GIS',
+          'Peralatan Survei',
+          'Software Core Logging',
+          'Sistem Pelacakan Produksi',
+          'Sistem Manajemen Pemeliharaan',
+          'Alat Monitoring Lingkungan',
+          'Software Kontrol Kualitas',
+          'Alat Manajemen Proyek'
+        ],
+        preferred: [
+          'Leapfrog Geo',
+          'GEMS',
+          'Whittle',
+          'Studio 5D',
+          'Datamine',
+          'ArcGIS',
+          'Pemrograman Python',
+          'R Statistical Software',
+          'MATLAB',
+          'Tableau',
+          'Power BI',
+          'SAP',
+          'Oracle Database',
+          'SQL',
+          'Excel/VBA Lanjutan'
+        ],
+        additional: [
+          'Platform Machine Learning',
+          'Alat Kecerdasan Buatan',
+          'Software Kontrol Drone',
+          'Platform IoT',
+          'Cloud Computing (AWS/Azure)',
+          'Platform Blockchain',
+          'Software Virtual Reality',
+          'Alat Augmented Reality',
+          'Software 3D Printing',
+          'Software Simulasi',
+          'Analitik Big Data',
+          'Aplikasi Mobile',
+          'Alat Web Development',
+          'Platform Digital Twin',
+          'Software Analitik Prediktif'
+        ]
+      },
+      isMockData: true
+    };
+
+    return fallbackOptions;
+  }
 };
 
 export const assessPositionQualifications = async (positionData) => {

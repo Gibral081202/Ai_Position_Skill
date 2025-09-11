@@ -9,6 +9,7 @@ import {
   MenuItem,
   ListSubheader
 } from '@mui/material';
+import * as XLSX from 'xlsx';
 import { assessPositionQualifications } from '../services/geminiService';
 import '../excel-theme.css';
 
@@ -137,6 +138,149 @@ const ExcelLikeTable = () => {
     } finally {
       setLoading(prev => ({ ...prev, [rowId]: false }));
     }
+  };
+
+  // Check if table has meaningful data for export
+  const hasDataForExport = () => {
+    return rows.some(row => 
+      row.positionTitle || 
+      row.positionLevel || 
+      row.overallAssessment ||
+      row.qualifications.essential.length > 0 ||
+      row.qualifications.preferred.length > 0 ||
+      row.qualifications.niceToHave.length > 0 ||
+      row.assessments.education.justification ||
+      row.assessments.education.recommendation ||
+      row.assessments.experience.justification ||
+      row.assessments.experience.recommendation ||
+      row.assessments.skills.hardSkills.length > 0 ||
+      row.assessments.skills.softSkills.length > 0 ||
+      row.safetyTraining.length > 0 ||
+      row.technicalTools.length > 0
+    );
+  };
+
+  const exportToExcel = () => {
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filename = `Mining_Position_Assessment_${timestamp}.xlsx`;
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    
+    // Prepare data for Excel
+    const excelData = [];
+    
+    // Headers
+    const headers = [
+      'Position Title',
+      'Position Level',
+      'Industry',
+      'Overall Assessment',
+      'Essential Qualifications',
+      'Preferred Qualifications',
+      'Nice to Have',
+      'Education Requirements',
+      'Education Recommendations',
+      'Experience Requirements',
+      'Experience Recommendations',
+      'Hard Skills',
+      'Hard Skills Ratings',
+      'Soft Skills',
+      'Soft Skills Ratings',
+      'Safety Training',
+      'Technical Tools',
+      'Technical Tools Ratings'
+    ];
+    excelData.push(headers);
+
+    // Data rows
+    rows.forEach(row => {
+      const hardSkillsWithRatings = row.assessments.skills.hardSkills.map(skill => {
+        const rating = row.assessments.skills.hardSkillsRatings?.[skill];
+        return rating ? `${skill} (${rating}/10)` : skill;
+      }).join('; ');
+
+      const softSkillsWithRatings = row.assessments.skills.softSkills.map(skill => {
+        const rating = row.assessments.skills.softSkillsRatings?.[skill];
+        return rating ? `${skill} (${rating}/10)` : skill;
+      }).join('; ');
+
+      const toolsWithRatings = row.technicalTools.map(tool => {
+        const rating = row.technicalToolsRatings?.[tool];
+        return rating ? `${tool} (${rating}/10)` : tool;
+      }).join('; ');
+
+      const rowData = [
+        row.positionTitle || '',
+        row.positionLevel || '',
+        row.industry || '',
+        row.overallAssessment || '',
+        row.qualifications.essential.join('; ') || '',
+        row.qualifications.preferred.join('; ') || '',
+        row.qualifications.niceToHave.join('; ') || '',
+        row.assessments.education.justification || '',
+        row.assessments.education.recommendation || '',
+        row.assessments.experience.justification || '',
+        row.assessments.experience.recommendation || '',
+        row.assessments.skills.hardSkills.join('; ') || '',
+        hardSkillsWithRatings,
+        row.assessments.skills.softSkills.join('; ') || '',
+        softSkillsWithRatings,
+        row.safetyTraining.join('; ') || '',
+        row.technicalTools.join('; ') || '',
+        toolsWithRatings
+      ];
+      excelData.push(rowData);
+    });
+
+    // Create worksheet from data
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    
+    // Set column widths for better readability
+    const columnWidths = [
+      { wch: 20 }, // Position Title
+      { wch: 15 }, // Position Level
+      { wch: 10 }, // Industry
+      { wch: 30 }, // Overall Assessment
+      { wch: 25 }, // Essential Qualifications
+      { wch: 25 }, // Preferred Qualifications
+      { wch: 25 }, // Nice to Have
+      { wch: 25 }, // Education Requirements
+      { wch: 25 }, // Education Recommendations
+      { wch: 25 }, // Experience Requirements
+      { wch: 25 }, // Experience Recommendations
+      { wch: 25 }, // Hard Skills
+      { wch: 30 }, // Hard Skills Ratings
+      { wch: 25 }, // Soft Skills
+      { wch: 30 }, // Soft Skills Ratings
+      { wch: 25 }, // Safety Training
+      { wch: 25 }, // Technical Tools
+      { wch: 30 }  // Technical Tools Ratings
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Position Assessment');
+
+    // Add a second sheet with rating scale explanation
+    const ratingData = [
+      ['Rating Scale (1-10)'],
+      ['Rating', 'Description'],
+      ['1-2', 'Basic/Beginner level - Minimal proficiency required'],
+      ['3-4', 'Novice level - Some knowledge or training needed'],
+      ['5-6', 'Intermediate level - Solid understanding and practical experience'],
+      ['7-8', 'Advanced level - High proficiency and expertise required'],
+      ['9-10', 'Expert level - Mastery and specialized knowledge essential'],
+      [''],
+      ['Note: Ratings are applied to individual Hard Skills, Soft Skills, and Technical Tools']
+    ];
+    
+    const ratingSheet = XLSX.utils.aoa_to_sheet(ratingData);
+    ratingSheet['!cols'] = [{ wch: 15 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(workbook, ratingSheet, 'Rating Scale');
+
+    // Write and download the file
+    XLSX.writeFile(workbook, filename);
   };
 
   const addNewRow = () => {
@@ -276,6 +420,17 @@ const ExcelLikeTable = () => {
           onClick={() => setRows([rows[0]])}
         >
           Clear All
+        </button>
+        <button 
+          className="excel-button" 
+          onClick={exportToExcel}
+          disabled={!hasDataForExport()}
+          style={{ 
+            backgroundColor: hasDataForExport() ? '#17a2b8' : '#6c757d',
+            cursor: hasDataForExport() ? 'pointer' : 'not-allowed'
+          }}
+        >
+          Export to Excel
         </button>
       </div>
 

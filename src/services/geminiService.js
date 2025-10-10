@@ -49,6 +49,78 @@ const retryWithBackoff = async (fn, maxRetries = MAX_RETRIES) => {
   }
 };
 
+// Helper function to extract and repair JSON from Gemini response
+const extractAndRepairJSON = (response) => {
+  let jsonString = response.trim();
+  
+  // Remove markdown code blocks if present
+  jsonString = jsonString.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+  
+  // Find JSON object bounds
+  const jsonStart = jsonString.indexOf('{');
+  let jsonEnd = jsonString.lastIndexOf('}');
+  
+  if (jsonStart === -1) {
+    throw new Error('No JSON object found in response');
+  }
+  
+  if (jsonEnd !== -1 && jsonEnd > jsonStart) {
+    jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
+  }
+  
+  // Clean up common JSON formatting issues
+  jsonString = jsonString
+    .replace(/,\s*}/g, '}') // Remove trailing commas before }
+    .replace(/,\s*]/g, ']') // Remove trailing commas before ]
+    .replace(/\r?\n/g, ' ') // Replace newlines with spaces
+    .replace(/\s+/g, ' ')   // Normalize whitespace
+    .trim();
+  
+  // Validate and repair JSON structure
+  let braceCount = 0;
+  let inString = false;
+  let escapeNext = false;
+  let validEnd = -1;
+  
+  for (let i = 0; i < jsonString.length; i++) {
+    const char = jsonString[i];
+    
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    
+    if (char === '\\') {
+      escapeNext = true;
+      continue;
+    }
+    
+    if (char === '"' && !escapeNext) {
+      inString = !inString;
+      continue;
+    }
+    
+    if (!inString) {
+      if (char === '{') {
+        braceCount++;
+      } else if (char === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          validEnd = i;
+          break;
+        }
+      }
+    }
+  }
+  
+  // If we found a valid end, truncate there
+  if (validEnd > 0) {
+    jsonString = jsonString.substring(0, validEnd + 1);
+  }
+  
+  return jsonString;
+};
+
 // Call Gemini API
 const callGeminiAPI = async (prompt) => {
   const response = await fetch(`${API_URL}?key=${API_KEY}`, {
@@ -57,16 +129,23 @@ const callGeminiAPI = async (prompt) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      contents: [{
-        parts: [{
-          text: prompt
-        }]
-      }],
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: prompt
+            }
+          ]
+        }
+      ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.3,
         topK: 40,
         topP: 0.9,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
+        stopSequences: [],
+        responseMimeType: "application/json"
       }
     })
   });
@@ -721,15 +800,14 @@ Focus on mining industry specifics including safety, operations, geology, engine
       const response = await callGeminiAPI(prompt);
       
       try {
-        // Extract JSON from response if it contains extra text
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        const jsonString = jsonMatch ? jsonMatch[0] : response;
+        const jsonString = extractAndRepairJSON(response);
         const parsed = JSON.parse(jsonString);
         parsed.isMockData = false;
         return parsed;
       } catch (parseError) {
         console.error('Failed to parse skills options JSON:', parseError);
-        throw new Error('Invalid response format from API');
+        console.error('Raw response:', response.substring(0, 500) + '...');
+        throw new Error(`JSON parsing failed: ${parseError.message}`);
       }
     });
 
@@ -738,7 +816,10 @@ Focus on mining industry specifics including safety, operations, geology, engine
   } catch (error) {
     console.error('Error generating skills and tools options:', error);
     
-    // Fallback to predefined comprehensive lists
+    // Fallback to predefined comprehensive lists if enabled
+    if (!API_CONFIG.USE_MOCK_DATA_ON_ERROR) {
+      throw error;
+    }
     const fallbackOptions = {
       technicalSkills: {
         required: [
@@ -913,7 +994,9 @@ export const assessPositionQualifications = async (positionData) => {
     
     // Try real API with retry logic
     const result = await retryWithBackoff(async () => {
-      const prompt = `You are an expert mining industry HR consultant. Return ONLY valid JSON without any additional text. All text content must be in Indonesian language.
+      const prompt = `You are an expert mining industry HR consultant. 
+
+CRITICAL: Return ONLY valid, complete JSON without any additional text, explanations, or markdown. Ensure all strings are properly escaped and the JSON is complete and valid. All text content must be in Indonesian language.
 
 {
   "assessments": {
@@ -961,40 +1044,52 @@ Rating Scale (1-10):
 - 7-8: Advanced level - High proficiency and expertise required
 - 9-10: Expert level - Mastery and specialized knowledge essential
 
-For Skills category, provide:
-- hardSkills: List of specific technical/hard skills required (e.g., "Operasi Alat Berat", "Welding", "AutoCAD")
+IMPORTANT: You MUST provide ALL required fields with comprehensive content. Provide 10-15 items for each category as requested.
+
+For recommendedQualifications, provide exactly 10-15 items each:
+- essential: 10-15 most critical qualifications that are absolutely required
+- preferred: 10-15 qualifications that are highly desired but not absolutely essential
+- niceToHave: 10-15 qualifications that would be beneficial but not required
+
+For Skills category, provide exactly 10-15 items each:
+- hardSkills: 10-15 specific technical/hard skills required (e.g., "Operasi Alat Berat", "Welding", "AutoCAD", "Sistem Kelistrikan", "Troubleshooting Mesin", "PLC Programming", "Hydraulic Systems", "Preventive Maintenance", "Quality Control", "Safety Procedures", "Equipment Calibration", "Technical Documentation", "Process Optimization", "Root Cause Analysis", "Mechanical Repair")
 - hardSkillsRatings: Object with each hard skill as key and rating (1-10) as value
-- softSkills: List of interpersonal/soft skills needed (e.g., "Kepemimpinan", "Komunikasi", "Manajemen Waktu")
+- softSkills: 10-15 interpersonal/soft skills needed (e.g., "Kepemimpinan", "Komunikasi", "Manajemen Waktu", "Kerja Tim", "Problem Solving", "Adaptabilitas", "Pengambilan Keputusan", "Manajemen Konflik", "Delegasi", "Mentoring", "Negosiasi", "Presentasi", "Analisis Kritis", "Kreativitas", "Manajemen Stres")
 - softSkillsRatings: Object with each soft skill as key and rating (1-10) as value
 
-For Technical Tools category, provide:
-- requiredTools: List of specific software/tools/equipment (e.g., "Surpac", "AutoCAD", "SCADA System")
+For Technical Tools category, provide exactly 10-15 items:
+- requiredTools: 10-15 specific software/tools/equipment (e.g., "Surpac", "AutoCAD", "SCADA System", "Microsoft Office", "Multimeter", "Oscilloscope", "CMMS Software", "CAD Software", "Statistical Software", "Database Systems", "Project Management Tools", "Safety Management Systems", "Quality Control Software", "Maintenance Planning Tools", "Environmental Monitoring Equipment")
 - toolRatings: Object with each tool as key and required proficiency rating (1-10) as value
 
-For Certifications category, provide:
-- requiredCertifications: List of specific certificates needed (e.g., "MSHA Certificate", "SIO Alat Berat", "Welding Certificate")
+For Certifications category, provide exactly 10-15 items:
+- requiredCertifications: 10-15 specific certificates needed (e.g., "MSHA Certificate", "SIO Alat Berat", "Welding Certificate", "K3 Umum", "First Aid", "Confined Space Entry", "Lockout/Tagout", "Hazmat Training", "Emergency Response", "Fire Safety", "Environmental Compliance", "Quality Management ISO 9001", "Safety Management ISO 45001", "Professional Engineering License", "Project Management Certification")
 
 Please provide detailed ratings for each individual skill and tool specific to mining industry requirements, with justifications and recommendations in Indonesian. Consider mining safety standards, industry regulations, and typical career progression paths. Use "Rendah", "Sedang", or "Tinggi" for riskLevel.`;
 
       const response = await callGeminiAPI(prompt);
       
       try {
-        // Extract JSON from response if it contains extra text
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        const jsonString = jsonMatch ? jsonMatch[0] : response;
+        const jsonString = extractAndRepairJSON(response);
+        console.log('Attempting to parse JSON:', jsonString.substring(0, 200) + '...');
+        
         const parsed = JSON.parse(jsonString);
+        console.log('✅ GEMINI API SUCCESS - Real AI data generated');
+        console.log('Parsed assessment structure:', JSON.stringify(parsed, null, 2));
         parsed.isMockData = false;
+        parsed.dataSource = 'GEMINI_API';
         return parsed;
       } catch (parseError) {
         console.error('Failed to parse JSON response:', parseError);
-        throw new Error('Invalid response format from API');
+        console.error('Raw response length:', response.length);
+        console.error('Raw response preview:', response.substring(0, 1000));
+        throw new Error(`JSON parsing failed: ${parseError.message}`);
       }
     });
 
     return result;
 
   } catch (error) {
-    console.error('Error calling Gemini API:', error);
+    console.error('❌ GEMINI API ERROR:', error);
     
     // Check if it's a connection error or API limit
     const isConnectionError = error.message?.includes('fetch') || 
@@ -1003,8 +1098,8 @@ Please provide detailed ratings for each individual skill and tool specific to m
                              error.message?.includes('Failed to fetch') ||
                              error.status === 429;
     
-    if (isConnectionError) {
-      console.log('Gemini API unavailable, falling back to mock data');
+    if (API_CONFIG.USE_MOCK_DATA_ON_ERROR && isConnectionError) {
+      console.log('🔄 FALLING BACK TO MOCK DATA (connection error)');
       
       // Return mock data with a delay to simulate processing
       await new Promise(resolve => setTimeout(resolve, API_CONFIG.MOCK_DATA_DELAY));
@@ -1012,9 +1107,15 @@ Please provide detailed ratings for each individual skill and tool specific to m
     }
     
     // For other errors, also fall back to mock data
-    console.log('API error, falling back to mock data');
-    await new Promise(resolve => setTimeout(resolve, API_CONFIG.MOCK_DATA_DELAY));
-    return generateMockAssessment(positionData);
+    if (API_CONFIG.USE_MOCK_DATA_ON_ERROR) {
+      console.log('🔄 FALLING BACK TO MOCK DATA (other error)');
+      await new Promise(resolve => setTimeout(resolve, API_CONFIG.MOCK_DATA_DELAY));
+      return generateMockAssessment(positionData);
+    }
+
+    // If mock fallback disabled, rethrow to let UI handle error
+    console.log('🚫 MOCK DATA DISABLED - Error will be thrown to UI');
+    throw error;
   }
 };
 
@@ -1045,15 +1146,14 @@ Provide comprehensive mining industry insights in Indonesian including current m
       const response = await callGeminiAPI(prompt);
       
       try {
-        // Extract JSON from response if it contains extra text
-        const jsonMatch = response.match(/\{[\s\S]*\}/);
-        const jsonString = jsonMatch ? jsonMatch[0] : response;
+        const jsonString = extractAndRepairJSON(response);
         const parsed = JSON.parse(jsonString);
         parsed.isMockData = false;
         return parsed;
       } catch (parseError) {
         console.error('Failed to parse insights JSON:', parseError);
-        throw new Error('Invalid response format from API');
+        console.error('Raw response:', response.substring(0, 500) + '...');
+        throw new Error(`JSON parsing failed: ${parseError.message}`);
       }
     });
 
@@ -1069,7 +1169,7 @@ Provide comprehensive mining industry insights in Indonesian including current m
                              error.message?.includes('Failed to fetch') ||
                              error.status === 429;
     
-    if (isConnectionError) {
+    if (API_CONFIG.USE_MOCK_DATA_ON_ERROR && isConnectionError) {
       console.log('Gemini API unavailable, falling back to mock insights');
       
       // Return mock data with a delay to simulate processing
@@ -1078,8 +1178,13 @@ Provide comprehensive mining industry insights in Indonesian including current m
     }
     
     // For other errors, also fall back to mock data
-    console.log('API error, falling back to mock insights');
-    await new Promise(resolve => setTimeout(resolve, API_CONFIG.MOCK_DATA_DELAY));
-    return generateMockInsights(positionData);
+    if (API_CONFIG.USE_MOCK_DATA_ON_ERROR) {
+      console.log('API error, falling back to mock insights');
+      await new Promise(resolve => setTimeout(resolve, API_CONFIG.MOCK_DATA_DELAY));
+      return generateMockInsights(positionData);
+    }
+
+    // If mock fallback disabled, rethrow to let UI handle error
+    throw error;
   }
 };

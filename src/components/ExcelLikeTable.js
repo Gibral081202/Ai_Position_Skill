@@ -47,6 +47,7 @@ const ExcelLikeTable = () => {
   const [loading, setLoading] = useState({});
   const [skillsAndToolsOptions, setSkillsAndToolsOptions] = useState(null);
   const [generatingOptions, setGeneratingOptions] = useState(false);
+  const [error, setError] = useState(null);
 
   // Predefined options - Mining Industry Focus
   const positionTitles = [
@@ -88,6 +89,7 @@ const ExcelLikeTable = () => {
     if (!row.positionTitle || !row.positionLevel) return;
 
     setLoading(prev => ({ ...prev, [rowId]: true }));
+    setError(null);
 
     try {
       const formData = {
@@ -99,7 +101,11 @@ const ExcelLikeTable = () => {
       const assessment = await assessPositionQualifications(formData);
       
       if (assessment) {
-        console.log('Assessment received:', assessment); // Debug log
+        console.log('📊 ASSESSMENT RECEIVED:', assessment.dataSource === 'GEMINI_API' ? '✅ FROM GEMINI API' : '⚠️ UNKNOWN SOURCE');
+        console.log('Assessment data:', assessment);
+        console.log('Skills data:', assessment.assessments?.Skills);
+        console.log('Technical Tools data:', assessment.assessments?.['Technical Tools']);
+        console.log('Certifications data:', assessment.assessments?.Certifications);
         setRows(prev => prev.map(r => 
           r.id === rowId 
             ? {
@@ -128,7 +134,7 @@ const ExcelLikeTable = () => {
                     softSkillsRatings: assessment.assessments?.Skills?.softSkillsRatings || {}
                   }
                 },
-                safetyTraining: assessment.assessments?.Certifications?.requiredCertifications || [],
+                safetyTraining: assessment.assessments?.Certifications?.requiredCertifications || assessment.assessments?.['Safety Training']?.requiredCertifications || [],
                 technicalTools: assessment.assessments?.['Technical Tools']?.requiredTools || [],
                 technicalToolsRatings: assessment.assessments?.['Technical Tools']?.toolRatings || {}
               }
@@ -137,6 +143,7 @@ const ExcelLikeTable = () => {
       }
     } catch (error) {
       console.error('Assessment error:', error);
+      setError('Failed to get assessment from Gemini API. Please check your API key/quotas and try again.');
     } finally {
       setLoading(prev => ({ ...prev, [rowId]: false }));
     }
@@ -145,12 +152,14 @@ const ExcelLikeTable = () => {
   // Generate Skills and Tools Options using LLM
   const generateOptions = async () => {
     setGeneratingOptions(true);
+    setError(null);
     try {
       const options = await generateSkillsAndToolsOptions();
       setSkillsAndToolsOptions(options);
       console.log('Generated Skills and Tools Options:', options);
     } catch (error) {
       console.error('Error generating options:', error);
+      setError('Failed to generate skills and tools via Gemini API.');
     } finally {
       setGeneratingOptions(false);
     }
@@ -423,6 +432,11 @@ const ExcelLikeTable = () => {
 
   return (
     <div className="excel-container">
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <div className="excel-title">
         Mining Position Qualification Assessment - Excel View
       </div>
@@ -452,7 +466,7 @@ const ExcelLikeTable = () => {
               Generating...
             </>
           ) : (
-            'Generate Skills & Tools Options'
+            'Mass Processing'
           )}
         </button>
         <button 
@@ -465,6 +479,15 @@ const ExcelLikeTable = () => {
           }}
         >
           Export to Excel
+        </button>
+        <button 
+          className="excel-button"
+          style={{ 
+            backgroundColor: '#f39c12',
+            cursor: 'pointer'
+          }}
+        >
+          Export to SAP
         </button>
       </div>
 

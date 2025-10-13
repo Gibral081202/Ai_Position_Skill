@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'HRAI-Mining-HR',
     script: 'server.js',
-    cwd: '/home/Gibral/Ai_Position_Skill',
+    cwd: '/var/www/Ai_Position_Skill',
     instances: 1,
     autorestart: true,
     watch: false,

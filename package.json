@@ -2,6 +2,7 @@
   "name": "mining-hr-position-qualification-ui",
   "version": "1.0.0",
   "description": "Mining Industry HR Position Qualification Definition Interface",
+  "homepage": "/mining-hr",
   "main": "server.js",
   "scripts": {
     "start": "react-scripts start",

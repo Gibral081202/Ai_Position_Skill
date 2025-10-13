@@ -12,9 +12,9 @@ module.exports = {
       PORT: 3050,
       REACT_APP_GEMINI_API_KEY: 'AIzaSyBiwOLi2PtSl-qndmfy2mxAe_slbFm_EM4'
     },
-    error_file: '/var/log/pm2/HRAI-Mining-HR-error.log',
-    out_file: '/var/log/pm2/HRAI-Mining-HR-out.log',
-    log_file: '/var/log/pm2/HRAI-Mining-HR-combined.log',
+    error_file: '/home/Gibral/.pm2/logs/HRAI-Mining-HR-error.log',
+    out_file: '/home/Gibral/.pm2/logs/HRAI-Mining-HR-out.log',
+    log_file: '/home/Gibral/.pm2/logs/HRAI-Mining-HR-combined.log',
     time: true
   }]
 };

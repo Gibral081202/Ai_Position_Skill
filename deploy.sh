@@ -102,16 +102,32 @@ echo -e "${YELLOW}📋 Step 7: Setting up logging...${NC}"
 sudo mkdir -p /var/log/pm2
 sudo chown Gibral:Gibral /var/log/pm2
 
-# Step 8: Start the application with PM2
-echo -e "${YELLOW}🚀 Step 8: Starting the application...${NC}"
+# Step 8: Setup environment variables
+echo -e "${YELLOW}🔧 Step 8: Setting up environment variables...${NC}"
+if [ ! -f "$DEPLOY_DIR/.env" ]; then
+    echo "Creating environment variables file..."
+    cat > $DEPLOY_DIR/.env << EOF
+NODE_ENV=production
+PORT=$PORT
+REACT_APP_GEMINI_API_KEY=AIzaSyBiwOLi2PtSl-qndmfy2mxAe_slbFm_EM4
+EOF
+    chmod 600 $DEPLOY_DIR/.env
+    chown Gibral:Gibral $DEPLOY_DIR/.env
+    echo "✅ Environment variables configured"
+else
+    echo "Environment variables file already exists"
+fi
+
+# Step 9: Start the application with PM2
+echo -e "${YELLOW}🚀 Step 9: Starting the application...${NC}"
 pm2 stop $APP_NAME 2>/dev/null || true
 pm2 delete $APP_NAME 2>/dev/null || true
 pm2 start ecosystem.config.js
 pm2 save
 pm2 startup | grep -E '^sudo' | sh || true
 
-# Step 9: Verify deployment
-echo -e "${YELLOW}✅ Step 9: Verifying deployment...${NC}"
+# Step 10: Verify deployment
+echo -e "${YELLOW}✅ Step 10: Verifying deployment...${NC}"
 sleep 5
 
 if curl -s http://localhost:$PORT/api/health > /dev/null; then

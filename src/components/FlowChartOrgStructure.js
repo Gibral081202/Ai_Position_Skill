@@ -329,7 +329,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     formData.append('orgFile', file);
 
     try {
-      const response = await fetch('/api/org-chart/upload', {
+      const response = await fetch('/mining-hr/api/org-chart/upload', {
         method: 'POST',
         body: formData
       });
@@ -356,7 +356,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
   // Load root organizational nodes for flowchart
   const loadRootNodesForFlowchart = async () => {
     try {
-      const response = await fetch('/api/org-chart/roots');
+      const response = await fetch('/mining-hr/api/org-chart/roots');
       const result = await response.json();
 
       if (!response.ok) {
@@ -464,7 +464,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     if (node.hasChildren && level < maxLevels - 1) {
       try {
         // Load children from API
-        const response = await fetch(`/api/org-chart/children/${node.id}`);
+        const response = await fetch(`/mining-hr/api/org-chart/children/${node.id}`);
         const result = await response.json();
 
         if (response.ok && result.data) {
@@ -507,7 +507,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     console.log(`🔄 Loading children for node: ${originalNodeId}`);
     
     try {
-      const response = await fetch(`/api/org-chart/children/${originalNodeId}`);
+      const response = await fetch(`/mining-hr/api/org-chart/children/${originalNodeId}`);
       const result = await response.json();
 
       if (!response.ok) {

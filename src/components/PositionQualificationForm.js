@@ -24,6 +24,7 @@ import {
 } from '@mui/icons-material';
 import AIAssessmentPanel from './AIAssessmentPanel';
 import { assessPositionQualifications, getQualificationInsights } from '../services/geminiService';
+import OrgChart from './OrgChart';
 
 const PositionQualificationForm = () => {
   const [formData, setFormData] = useState({
@@ -159,6 +160,15 @@ const PositionQualificationForm = () => {
     }
   };
 
+  const handlePersonSelect = ({ name, positionTitle, positionLevel }) => {
+    // Update the form with selected person's position info
+    setFormData(prev => ({
+      ...prev,
+      positionName: positionTitle || prev.positionName,
+      positionLevel: positionLevel || prev.positionLevel
+    }));
+  };
+
   const isFormValid = formData.positionName && formData.positionLevel; // Remove industry requirement since it's always "Mining"
 
   return (
@@ -282,6 +292,11 @@ const PositionQualificationForm = () => {
         onGetAssessment={handleGetAssessment}
         onGetInsights={handleGetInsights}
       />
+
+      {/* OrgChart under the form so clicking a name fills the fields */}
+      <Box sx={{ mt: 3 }}>
+        <OrgChart onPersonSelect={handlePersonSelect} />
+      </Box>
     </Container>
   );
 };

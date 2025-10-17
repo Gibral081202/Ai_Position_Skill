@@ -9,7 +9,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server": "node server.js",
+    "server": "node --max-old-space-size=16384 server.js",
     "dev": "react-scripts start",
     "prod": "npm run build && npm run server"
   },
@@ -18,11 +18,16 @@
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.0",
     "@mui/material": "^5.14.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "file-saver": "^2.0.5",
+    "multer": "^2.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1",
+    "reactflow": "^11.11.4",
     "xlsx": "^0.18.5"
   },
   "browserslist": {
@@ -36,5 +41,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "proxy": "http://localhost:3050"
 }

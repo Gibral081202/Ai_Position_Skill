@@ -12,6 +12,7 @@ import {
 import * as XLSX from 'xlsx';
 import { assessPositionQualifications, generateSkillsAndToolsOptions } from '../services/geminiService';
 import '../excel-theme.css';
+import FlowChartOrgStructure from './FlowChartOrgStructure';
 
 const ExcelLikeTable = () => {
   const [rows, setRows] = useState([
@@ -48,6 +49,7 @@ const ExcelLikeTable = () => {
   const [skillsAndToolsOptions, setSkillsAndToolsOptions] = useState(null);
   const [generatingOptions, setGeneratingOptions] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedRowId, setSelectedRowId] = useState(rows[0]?.id || 1);
 
   // Predefined options - Mining Industry Focus
   const positionTitles = [
@@ -82,6 +84,17 @@ const ExcelLikeTable = () => {
         ? { ...row, [field]: value }
         : row
     ));
+  };
+
+  const handlePersonSelect = async ({ name, positionTitle, positionLevel }) => {
+    // Fill the selected row with person position and level, and then generate assessment
+    const rowId = selectedRowId || (rows[0] && rows[0].id);
+    if (!rowId) return;
+
+    setRows(prev => prev.map(r => r.id === rowId ? { ...r, positionTitle: positionTitle || r.positionTitle, positionLevel: positionLevel || r.positionLevel } : r));
+
+    // Small delay to ensure state update before generating assessment
+    setTimeout(() => generateAssessment(rowId), 100);
   };
 
   const generateAssessment = async (rowId) => {
@@ -441,6 +454,11 @@ const ExcelLikeTable = () => {
         Mining Position Qualification Assessment - Excel View
       </div>
 
+        {/* Organizational Structure Flowchart - clicking a person fills the selected row */}
+        <div style={{ marginTop: '12px' }}>
+          <FlowChartOrgStructure onPersonSelect={handlePersonSelect} />
+        </div>
+
       <div className="excel-action-buttons">
         <button className="excel-button" onClick={addNewRow}>
           Add New Position
@@ -519,6 +537,15 @@ const ExcelLikeTable = () => {
               <tr key={row.id}>
                 <td className="col-position-title">
                   {renderSelect(row.id, 'positionTitle', row.positionTitle, positionTitles)}
+                  <div style={{ marginTop: 6 }}>
+                    <button
+                      className={`excel-button small ${selectedRowId === row.id ? 'selected' : ''}`}
+                      onClick={() => setSelectedRowId(row.id)}
+                      title="Select this row to receive OrgChart clicks"
+                    >
+                      {selectedRowId === row.id ? 'Selected' : 'Select Row'}
+                    </button>
+                  </div>
                 </td>
                 <td className="col-position-level">
                   {renderSelect(row.id, 'positionLevel', row.positionLevel, positionLevels)}

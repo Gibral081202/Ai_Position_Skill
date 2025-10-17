@@ -1,0 +1,7 @@
+Object Description,Object Type,Object ID,Parent Relationship Obj ID,Relationship (Text),Relationship Obj (Text)
+BERAU COAL,O,60000003,60020668,is Managed by,PRESIDENT DIRECTOR
+HRGS DIRECTORATE,O,60005578,60000003,is Managed by,CHIEF HUMAN RESOURCES OFFICER
+HRGS BC DIVISION,O,60013867,60005578,is Managed by,BUSINESS PARTNER HEAD & HR HEAD BC
+Business Partner Head & HR Head BC,S,60082897,60013867,Holder,Agus Dani Ariyanto
+HR OPERATIONS DEPT,O,60018884,60013867,is Managed by,HR INDUSTRIAL & PEOPLE SENIOR MANAGER
+HR Industrial & People Senior Manager,S,60016583,60018884,Holder,Tomy Indarto

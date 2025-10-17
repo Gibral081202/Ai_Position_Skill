@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 APP_NAME="HRAI-Mining-HR"
-DEPLOY_DIR="/var/www/ai-position-skill"
+DEPLOY_DIR="/var/www/Ai_Position_Skill"
 REPO_URL="https://github.com/Gibral081202/Ai_Position_Skill.git"
 PORT=3050
 

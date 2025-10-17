@@ -2,12 +2,12 @@ module.exports = {
   apps: [{
     name: 'HRAI-Mining-HR',
     script: 'server.js',
-    cwd: '/var/www/ai-position-skill',
+    cwd: '/var/www/Ai_Position_Skill',
     instances: 1,
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
-    env_file: '/var/www/ai-position-skill/.env',
+    env_file: '/var/www/Ai_Position_Skill/.env',
     env: {
       NODE_ENV: 'production',
       PORT: 3050

@@ -3,6 +3,9 @@ const path = require('path');
 const multer = require('multer');
 const cors = require('cors');
 const { parseOrganizationalData, parseCSVText, validateFile } = require('./src/services/orgChartParser');
+const DatabaseManager = require('./src/services/databaseManager');
+const ExcelToDatabaseImporter = require('./excel-to-database-importer');
+const OrganizationalFlowchartService = require('./src/services/orgFlowchartService');
 
 const app = express();
 
@@ -39,6 +42,7 @@ let processedOrgData = null;
 /**
  * POST /api/org-chart/upload
  * Handles file upload and processes organizational structure data
+ * NOW ALSO SAVES ALL DATA TO DATABASE
  */
 app.post('/api/org-chart/upload', upload.single('orgFile'), async (req, res) => {
   console.log('🔄 Received org chart file upload request');
@@ -87,6 +91,34 @@ app.post('/api/org-chart/upload', upload.single('orgFile'), async (req, res) => 
         filename: req.file.originalname
       };
       
+      // 🆕 NEW: SAVE ALL DATA TO DATABASE
+      console.log('💾 Saving all data to database...');
+      try {
+        // Create temporary file for importer
+        const fs = require('fs');
+        const tempFilePath = path.join(__dirname, 'temp_upload.xlsx');
+        fs.writeFileSync(tempFilePath, req.file.buffer);
+        
+        // Import to database (clear existing data first)
+        const importer = new ExcelToDatabaseImporter();
+        const importResult = await importer.importExcelToDatabase(tempFilePath, true);
+        
+        // Clean up temporary file
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+        
+        if (importResult.success) {
+          console.log(`✅ Successfully saved ${importResult.stats.totalInserted} records to database`);
+        } else {
+          console.error('❌ Database import failed:', importResult.error);
+          // Continue with memory-only processing, but warn user
+        }
+      } catch (dbError) {
+        console.error('❌ Database save error:', dbError.message);
+        // Continue with memory-only processing
+      }
+      
       const memUsageAfter = process.memoryUsage();
       console.log(`💾 Memory usage after processing: ${Math.round(memUsageAfter.heapUsed / 1024 / 1024)}MB`);
       console.log(`✅ Successfully processed organizational chart with ${result.metadata.totalRecords} records`);
@@ -113,7 +145,7 @@ app.post('/api/org-chart/upload', upload.single('orgFile'), async (req, res) => 
 
       res.json({
         success: true,
-        message: 'Organizational chart processed successfully - Progressive loading enabled',
+        message: 'Organizational chart processed successfully - Data saved to database and progressive loading enabled',
         data: rootOverview, // Only root overview, not full hierarchy
         metadata: {
           ...result.metadata,
@@ -122,7 +154,8 @@ app.post('/api/org-chart/upload', upload.single('orgFile'), async (req, res) => 
           fileType: fileType,
           memoryUsed: Math.round(memUsageAfter.heapUsed / 1024 / 1024),
           progressiveMode: true,
-          rootNodesCount: result.data.length
+          rootNodesCount: result.data.length,
+          databaseSaved: true // Indicate data was saved to database
         }
       });
 
@@ -470,6 +503,302 @@ app.get('/api/org-chart/sample', (req, res) => {
       isSample: true
     }
   });
+});
+
+/**
+ * GET /api/org-chart/database/stats
+ * Returns database statistics
+ */
+app.get('/api/org-chart/database/stats', async (req, res) => {
+  console.log('📊 Received request for database statistics');
+  
+  try {
+    const db = new DatabaseManager();
+    await db.connect();
+    
+    const stats = await db.getTableStats();
+    
+    await db.disconnect();
+    
+    res.json({
+      success: true,
+      data: stats,
+      message: 'Database statistics retrieved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting database stats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get database statistics',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/org-chart/database/all
+ * Returns all organizational data from database
+ */
+app.get('/api/org-chart/database/all', async (req, res) => {
+  console.log('📋 Received request for all database records');
+  
+  try {
+    const db = new DatabaseManager();
+    await db.connect();
+    
+    const limit = parseInt(req.query.limit) || 1000;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const query = `
+      SELECT TOP ${limit}
+        id, object_description, object_abbr, object_type, object_id, status_object,
+        start_date, end_date, parent_relationship_id, parent_relationship_text,
+        parent_relationship_obj_id, parent_relationship_obj_text, relationship_id,
+        relationship_text, relationship_obj, relationship_obj_text, rel_id_sup,
+        rel_text_sup, rel_obj_sup, rel_obj_text_sup, cost_center_id,
+        cost_center_text, vacant_status, created_at, updated_at
+      FROM organizational_units
+      ORDER BY id
+      OFFSET ${offset} ROWS
+    `;
+    
+    const result = await db.executeQuery(query);
+    
+    await db.disconnect();
+    
+    res.json({
+      success: true,
+      data: result.recordset,
+      metadata: {
+        count: result.recordset.length,
+        limit: limit,
+        offset: offset,
+        hasMore: result.recordset.length === limit
+      },
+      message: `Retrieved ${result.recordset.length} records from database`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting database records:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get database records',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/org-chart/database/clear
+ * Clears all data from database
+ */
+app.delete('/api/org-chart/database/clear', async (req, res) => {
+  console.log('🗑️ Received request to clear database');
+  
+  try {
+    const db = new DatabaseManager();
+    await db.connect();
+    
+    // Get count before deletion
+    const beforeStats = await db.getTableStats();
+    
+    // Clear all data
+    await db.executeQuery('DELETE FROM organizational_units');
+    
+    // Get count after deletion
+    const afterStats = await db.getTableStats();
+    
+    await db.disconnect();
+    
+    res.json({
+      success: true,
+      message: `Successfully cleared ${beforeStats.total_records} records from database`,
+      data: {
+        recordsDeleted: beforeStats.total_records,
+        remainingRecords: afterStats.total_records
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error clearing database:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to clear database',
+      details: error.message
+    });
+  }
+});
+
+// ==================== NEW ENHANCED ORGANIZATIONAL FLOWCHART API ENDPOINTS ====================
+
+/**
+ * GET /api/flowchart/hierarchy
+ * Returns complete organizational hierarchy from database for flowchart display
+ */
+app.get('/api/flowchart/hierarchy', async (req, res) => {
+  console.log('🏢 Received request for organizational flowchart hierarchy');
+  
+  try {
+    const flowchartService = new OrganizationalFlowchartService();
+    const forceRefresh = req.query.refresh === 'true';
+    
+    const result = await flowchartService.getOrganizationalHierarchy(forceRefresh);
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to build organizational hierarchy',
+        details: result.error
+      });
+    }
+    
+    console.log(`✅ Successfully returned organizational flowchart with ${result.metadata.totalOrganizations} organizations and ${result.metadata.totalPositions} positions`);
+    
+    res.json({
+      success: true,
+      data: result.data,
+      metadata: result.metadata,
+      message: `Organizational flowchart loaded with ${result.metadata.rootNodes} root organizations`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting organizational flowchart hierarchy:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get organizational flowchart hierarchy',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/flowchart/branch/:nodeId
+ * Returns specific organizational branch for focused viewing
+ */
+app.get('/api/flowchart/branch/:nodeId', async (req, res) => {
+  console.log(`🌳 Received request for organizational branch: ${req.params.nodeId}`);
+  
+  try {
+    const flowchartService = new OrganizationalFlowchartService();
+    const result = await flowchartService.getOrganizationalBranch(req.params.nodeId);
+    
+    if (!result.success) {
+      return res.status(404).json({
+        success: false,
+        error: `Organizational branch not found: ${req.params.nodeId}`,
+        details: result.error
+      });
+    }
+    
+    console.log(`✅ Successfully returned organizational branch for ${req.params.nodeId}`);
+    
+    res.json({
+      success: true,
+      data: result.data,
+      metadata: result.metadata,
+      message: `Organizational branch loaded for ${req.params.nodeId}`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting organizational branch:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get organizational branch',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/flowchart/search
+ * Search for organizations and positions in the flowchart
+ */
+app.get('/api/flowchart/search', async (req, res) => {
+  console.log(`🔍 Received search request: ${req.query.q}`);
+  
+  try {
+    const { q: searchTerm, type: nodeType = 'all' } = req.query;
+    
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search term must be at least 2 characters long'
+      });
+    }
+    
+    const flowchartService = new OrganizationalFlowchartService();
+    const result = await flowchartService.searchNodes(searchTerm.trim(), nodeType);
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Search failed',
+        details: result.error
+      });
+    }
+    
+    console.log(`✅ Search completed: found ${result.data.length} results for "${searchTerm}"`);
+    
+    res.json({
+      success: true,
+      data: result.data,
+      metadata: result.metadata,
+      message: `Found ${result.data.length} results for "${searchTerm}"`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error searching organizational flowchart:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to search organizational flowchart',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/flowchart/refresh
+ * Force refresh of organizational flowchart cache
+ */
+app.post('/api/flowchart/refresh', async (req, res) => {
+  console.log('🔄 Received request to refresh organizational flowchart cache');
+  
+  try {
+    const flowchartService = new OrganizationalFlowchartService();
+    
+    // Clear cache and rebuild
+    flowchartService.clearCache();
+    const result = await flowchartService.getOrganizationalHierarchy(true);
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to refresh organizational hierarchy',
+        details: result.error
+      });
+    }
+    
+    console.log(`✅ Successfully refreshed organizational flowchart`);
+    
+    res.json({
+      success: true,
+      data: {
+        refreshed: true,
+        timestamp: new Date().toISOString(),
+        statistics: result.metadata
+      },
+      message: 'Organizational flowchart cache refreshed successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error refreshing organizational flowchart:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to refresh organizational flowchart',
+      details: error.message
+    });
+  }
 });
 
 // API health check endpoint

@@ -76,11 +76,13 @@ const extractAndRepairJSON = (response) => {
     .replace(/\s+/g, ' ')   // Normalize whitespace
     .trim();
   
-  // Validate and repair JSON structure
+  // Enhanced validation and repair JSON structure
   let braceCount = 0;
+  let bracketCount = 0;
   let inString = false;
   let escapeNext = false;
   let validEnd = -1;
+  let lastValidPosition = -1;
   
   for (let i = 0; i < jsonString.length; i++) {
     const char = jsonString[i];
@@ -109,14 +111,42 @@ const extractAndRepairJSON = (response) => {
           validEnd = i;
           break;
         }
+      } else if (char === '[') {
+        bracketCount++;
+      } else if (char === ']') {
+        bracketCount--;
+      }
+      
+      // Track last valid position where we have balanced braces/brackets
+      if (braceCount >= 0 && bracketCount >= 0) {
+        lastValidPosition = i;
       }
     }
   }
   
-  // If we found a valid end, truncate there
+  // If we found a valid end, use it
   if (validEnd > 0) {
     jsonString = jsonString.substring(0, validEnd + 1);
+  } else if (lastValidPosition > 0) {
+    // Fallback: truncate at last valid position and try to close structures
+    jsonString = jsonString.substring(0, lastValidPosition + 1);
+    
+    // Try to close any unclosed arrays and objects
+    for (let i = 0; i < bracketCount; i++) {
+      jsonString += ']';
+    }
+    for (let i = 0; i < braceCount; i++) {
+      jsonString += '}';
+    }
   }
+  
+  // Additional cleanup for common malformed patterns
+  jsonString = jsonString
+    .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas before closing brackets/braces
+    .replace(/([^,\[\{])\s*([}\]])/g, '$1$2') // Ensure proper spacing before closing brackets
+    .replace(/\"\s*([^:,}\]]+)\s*\"/g, '"$1"') // Clean up quoted strings
+    .replace(/:\s*,/g, ': ""') // Replace empty values with empty strings
+    .replace(/:\s*([}\]])/g, ': ""$1'); // Handle missing values before closing brackets
   
   return jsonString;
 };
@@ -1071,6 +1101,7 @@ Please provide detailed ratings for each individual skill and tool specific to m
       try {
         const jsonString = extractAndRepairJSON(response);
         console.log('Attempting to parse JSON:', jsonString.substring(0, 200) + '...');
+        console.log('JSON string length:', jsonString.length);
         
         const parsed = JSON.parse(jsonString);
         console.log('✅ GEMINI API SUCCESS - Real AI data generated');
@@ -1082,7 +1113,80 @@ Please provide detailed ratings for each individual skill and tool specific to m
         console.error('Failed to parse JSON response:', parseError);
         console.error('Raw response length:', response.length);
         console.error('Raw response preview:', response.substring(0, 1000));
-        throw new Error(`JSON parsing failed: ${parseError.message}`);
+        
+        // Try alternative repair strategies
+        console.log('🔧 Attempting alternative JSON repair strategies...');
+        
+        try {
+          // Strategy 1: Find the last complete object by looking for key patterns
+          let repairedJson = response.trim();
+          
+          // Remove markdown blocks
+          repairedJson = repairedJson.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
+          
+          // Find the start of JSON
+          const jsonStart = repairedJson.indexOf('{');
+          if (jsonStart === -1) throw new Error('No JSON start found');
+          
+          repairedJson = repairedJson.substring(jsonStart);
+          
+          // Strategy: Find last complete section and truncate there
+          const lastCompleteSection = Math.max(
+            repairedJson.lastIndexOf('"recommendedQualifications"'),
+            repairedJson.lastIndexOf('"overallAssessment"'),
+            repairedJson.lastIndexOf('"riskLevel"')
+          );
+          
+          if (lastCompleteSection > 0) {
+            // Find the end of this section
+            let searchPos = lastCompleteSection;
+            let braceCount = 0;
+            let inString = false;
+            
+            for (let i = searchPos; i < repairedJson.length; i++) {
+              const char = repairedJson[i];
+              
+              if (char === '"' && repairedJson[i-1] !== '\\') {
+                inString = !inString;
+              }
+              
+              if (!inString) {
+                if (char === '{') braceCount++;
+                if (char === '}') braceCount--;
+                
+                // If we've closed the main object, stop here
+                if (braceCount === 0 && i > searchPos + 50) {
+                  repairedJson = repairedJson.substring(0, i + 1);
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Final cleanup
+          repairedJson = repairedJson
+            .replace(/,\s*}/g, '}')
+            .replace(/,\s*]/g, ']')
+            .replace(/:\s*,/g, ': ""')
+            .replace(/([^"])\s*$/g, '$1"}');
+          
+          // Ensure it ends with }
+          if (!repairedJson.trim().endsWith('}')) {
+            repairedJson = repairedJson.trim() + '}';
+          }
+          
+          console.log('🔧 Trying repaired JSON (length:', repairedJson.length, ')');
+          const repairedParsed = JSON.parse(repairedJson);
+          
+          console.log('✅ GEMINI API SUCCESS - Real AI data generated (after repair)');
+          repairedParsed.isMockData = false;
+          repairedParsed.dataSource = 'GEMINI_API';
+          return repairedParsed;
+          
+        } catch (repairError) {
+          console.error('All JSON repair strategies failed:', repairError);
+          throw new Error(`JSON parsing failed: ${parseError.message}. Repair also failed: ${repairError.message}`);
+        }
       }
     });
 

@@ -36,42 +36,70 @@ import 'reactflow/dist/style.css';
 
 // Custom FlowChart Node Component for Organizational Units
 const FlowChartOrgNode = ({ data }) => {
-  const [showPositions, setShowPositions] = useState(true);
   const [expanding, setExpanding] = useState(false);
 
-  const nodeStyle = {
-    padding: '8px',
-    borderRadius: '6px',
-    border: data.type === 'root' ? '2px solid #1976d2' : '1px solid #1976d2',
-    backgroundColor: data.type === 'root' ? '#1976d2' : '#ffffff',
-    color: data.type === 'root' ? 'white' : '#1976d2',
-    minWidth: '180px',
-    maxWidth: '220px',
-    boxShadow: data.type === 'root' 
-      ? '0 4px 12px rgba(25, 118, 210, 0.3)'
-      : '0 2px 8px rgba(0,0,0,0.1)',
-    cursor: 'default',
-    fontFamily: 'Segoe UI, Arial, sans-serif'
+  // Different styles for Organizations (O) and Positions (S)
+  const getNodeStyle = () => {
+    const baseStyle = {
+      padding: '10px',
+      borderRadius: '8px',
+      minWidth: '200px',
+      maxWidth: '280px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      cursor: 'default',
+      fontFamily: 'Segoe UI, Arial, sans-serif',
+      border: '2px solid'
+    };
+
+    if (data.type === 'root') {
+      // Top-level organizations - Blue theme
+      return {
+        ...baseStyle,
+        backgroundColor: '#1976d2',
+        color: 'white',
+        borderColor: '#1565c0',
+        boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)'
+      };
+    } else if (data.nodeType === 'organization') {
+      // Sub-organizations (Object Type O) - Light blue theme
+      return {
+        ...baseStyle,
+        backgroundColor: '#e3f2fd',
+        color: '#1976d2',
+        borderColor: '#1976d2'
+      };
+    } else if (data.nodeType === 'position') {
+      // Positions (Object Type S) - Green theme
+      return {
+        ...baseStyle,
+        backgroundColor: '#e8f5e8',
+        color: '#2e7d32',
+        borderColor: '#4caf50',
+        minWidth: '180px',
+        maxWidth: '250px'
+      };
+    }
+    
+    return baseStyle;
   };
 
-  const positionStyle = {
-    fontSize: '10px',
-    padding: '4px 6px',
-    marginTop: '2px',
-    backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.2)' : '#f8f9fa',
-    borderRadius: '3px',
-    border: `1px solid ${data.type === 'root' ? 'rgba(255,255,255,0.3)' : '#e9ecef'}`,
-    color: data.type === 'root' ? 'white' : '#333'
+  const nodeStyle = getNodeStyle();
+
+  const headerStyle = {
+    fontSize: data.type === 'root' ? '14px' : (data.nodeType === 'position' ? '11px' : '12px'),
+    fontWeight: 'bold',
+    lineHeight: '1.2',
+    marginBottom: '8px'
   };
 
-  // Handle expand children
-  const handleExpand = async () => {
-    if (data.onExpand && !data.isExpanded && !expanding) {
+  // Handle expand/collapse children
+  const handleExpandCollapse = async () => {
+    if (data.onExpandCollapse && !expanding) {
       setExpanding(true);
       try {
-        await data.onExpand();
+        await data.onExpandCollapse(data.id, !data.isExpanded);
       } catch (error) {
-        console.error('Error expanding node:', error);
+        console.error('Error expanding/collapsing node:', error);
       }
       setExpanding(false);
     }
@@ -88,9 +116,7 @@ const FlowChartOrgNode = ({ data }) => {
     }
   };
 
-  // Display limited positions for flowchart clarity - REDUCED to 2 for cleaner layout
   const displayPositions = data.positions || [];
-  const positionsToShow = displayPositions.slice(0, 2); // Show max 2 positions for cleaner flowchart
 
   return (
     <>
@@ -98,70 +124,57 @@ const FlowChartOrgNode = ({ data }) => {
         type="target" 
         position={Position.Top} 
         style={{ 
-          backgroundColor: '#1976d2',
-          width: 6,
-          height: 6,
+          backgroundColor: data.nodeType === 'position' ? '#4caf50' : '#1976d2',
+          width: 8,
+          height: 8,
           border: '2px solid white'
         }} 
       />
       
       <div style={nodeStyle}>
+        {/* Header with expand/collapse button */}
         <Box display="flex" alignItems="center" justifyContent="space-between" marginBottom="6px">
-          <Typography 
-            variant="h6" 
-            style={{ 
-              fontWeight: 'bold', 
-              fontSize: data.type === 'root' ? '11px' : '10px',
-              lineHeight: '1.1',
-              flex: 1
-            }}
-          >
+          <Typography style={headerStyle}>
             {data.name}
           </Typography>
           
-          {/* Level indicator */}
-          <Chip 
-            label={`L${data.level + 1}`} 
-            size="small" 
-            sx={{ 
-              fontSize: '8px', 
-              height: '16px',
-              backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.2)' : '#e3f2fd',
-              color: data.type === 'root' ? 'white' : '#1976d2'
-            }}
-          />
-          
-          {/* Expand button for nodes with children */}
-          {data.hasChildren && (
-            <IconButton
-              size="small"
-              onClick={handleExpand}
-              disabled={expanding || data.isExpanded}
-              style={{
-                padding: '2px',
-                color: data.type === 'root' ? 'white' : '#1976d2',
-                marginLeft: '4px'
+          {/* Level and Type indicators */}
+          <Box display="flex" gap={0.5}>
+            <Chip 
+              label={data.nodeType === 'position' ? 'POS' : 'ORG'} 
+              size="small" 
+              sx={{ 
+                fontSize: '8px', 
+                height: '18px',
+                backgroundColor: data.nodeType === 'position' ? '#c8e6c9' : (data.type === 'root' ? 'rgba(255,255,255,0.2)' : '#bbdefb'),
+                color: data.nodeType === 'position' ? '#2e7d32' : (data.type === 'root' ? 'white' : '#1976d2')
               }}
-            >
-              {expanding ? (
-                <CircularProgress size={12} style={{ color: data.type === 'root' ? 'white' : '#1976d2' }} />
-              ) : data.isExpanded ? (
-                <ExpandLessIcon fontSize="small" />
-              ) : (
-                <ExpandMoreIcon fontSize="small" />
-              )}
-            </IconButton>
-          )}
+            />
+            
+            {data.level !== undefined && (
+              <Chip 
+                label={`L${data.level + 1}`} 
+                size="small" 
+                sx={{ 
+                  fontSize: '8px', 
+                  height: '18px',
+                  backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.2)' : '#f5f5f5',
+                  color: data.type === 'root' ? 'white' : '#666'
+                }}
+              />
+            )}
+          </Box>
         </Box>
         
+        {/* Manager information */}
         {data.manager && (
           <Typography 
             variant="body2" 
             style={{ 
               fontWeight: '400',
-              marginBottom: '4px',
-              fontSize: '8px',
-              opacity: 0.8
+              marginBottom: '8px',
+              fontSize: '9px',
+              opacity: 0.9
             }}
           >
             👤 {data.manager}
@@ -169,129 +182,130 @@ const FlowChartOrgNode = ({ data }) => {
         )}
 
         {/* Statistics */}
-        <Box display="flex" gap={0.5} marginBottom="6px">
-          {data.stats && (
-            <>
+        {data.stats && (
+          <Box display="flex" gap={0.5} marginBottom="8px" flexWrap="wrap">
+            {data.stats.directPositions > 0 && (
               <Chip 
-                label={`${data.stats.directPositions || 0}👥`} 
+                label={`${data.stats.directPositions} positions`} 
                 size="small" 
                 sx={{ 
                   fontSize: '8px', 
-                  height: '16px',
-                  backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.15)' : '#f0f7ff',
-                  color: data.type === 'root' ? 'white' : '#1976d2'
+                  height: '18px',
+                  backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.15)' : (data.nodeType === 'position' ? '#c8e6c9' : '#f0f7ff'),
+                  color: data.type === 'root' ? 'white' : (data.nodeType === 'position' ? '#2e7d32' : '#1976d2')
                 }}
               />
-              {data.stats.directChildren > 0 && (
-                <Chip 
-                  label={`${data.stats.directChildren}🏢`} 
-                  size="small" 
-                  sx={{ 
-                    fontSize: '8px', 
-                    height: '16px',
-                    backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.15)' : '#fff3e0',
-                    color: data.type === 'root' ? 'white' : '#f57c00'
-                  }}
-                />
-              )}
-            </>
-          )}
-        </Box>
-
-        {/* Key Positions (Compact for flowchart) */}
-        {positionsToShow.length > 0 && (
-          <Box>
-            <Typography 
-              variant="caption" 
-              style={{ 
-                fontWeight: '500', 
-                fontSize: '7px',
-                opacity: 0.7,
-                marginBottom: '2px',
-                display: 'block'
-              }}
-            >
-              Top Positions:
-            </Typography>
-            
-            <Box>
-              {positionsToShow.map((position, index) => (
-                <div 
-                  key={`${data.name}-position-${position.id}-${index}`} 
-                  style={{
-                    ...positionStyle,
-                    cursor: position.holder && position.holder !== 'Vacant' ? 'pointer' : 'default',
-                    padding: '2px 4px',
-                    marginTop: '1px',
-                    fontSize: '7px'
-                  }}
-                  onClick={() => handlePersonClick(position)}
-                  title={position.holder && position.holder !== 'Vacant' ? 'Click to select for assessment' : ''}
-                >
-                  <Typography variant="caption" style={{ fontWeight: '500', fontSize: '7px' }}>
-                    {position.name.length > 20 ? position.name.substring(0, 17) + '...' : position.name}
-                  </Typography>
-                  {position.holder && position.holder !== 'Vacant' && (
-                    <Typography 
-                      variant="caption" 
-                      style={{ 
-                        display: 'block', 
-                        fontSize: '6px', 
-                        opacity: 0.8,
-                        color: 'inherit'
-                      }}
-                    >
-                      👤 {position.holder.length > 15 ? position.holder.substring(0, 12) + '...' : position.holder}
-                    </Typography>
-                  )}
-                </div>
-              ))}
-              
-              {/* Show total count if more positions exist */}
-              {displayPositions.length > 2 && (
-                <Typography 
-                  variant="caption" 
-                  style={{ 
-                    fontSize: '6px',
-                    opacity: 0.5,
-                    fontStyle: 'italic',
-                    display: 'block',
-                    textAlign: 'center',
-                    marginTop: '2px'
-                  }}
-                >
-                  +{displayPositions.length - 2} more
-                </Typography>
-              )}
-            </Box>
+            )}
+            {data.stats.directChildren > 0 && (
+              <Chip 
+                label={`${data.stats.directChildren} units`} 
+                size="small" 
+                sx={{ 
+                  fontSize: '8px', 
+                  height: '18px',
+                  backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.15)' : '#fff3e0',
+                  color: data.type === 'root' ? 'white' : '#f57c00'
+                }}
+              />
+            )}
           </Box>
         )}
 
-        {/* Expand hint for nodes with children */}
-        {data.hasChildren && !data.isExpanded && (
-          <Typography 
-            variant="caption" 
-            style={{ 
-              fontSize: '6px',
-              opacity: 0.6,
-              fontStyle: 'italic',
-              display: 'block',
-              textAlign: 'center',
-              marginTop: '4px'
-            }}
-          >
-            ⬇ {data.stats?.directChildren || 0} depts
-          </Typography>
+        {/* Expand/Collapse Children Button */}
+        {data.hasChildren && (
+          <Box display="flex" justifyContent="center" marginBottom="8px">
+            <Button
+              size="small"
+              onClick={handleExpandCollapse}
+              disabled={expanding}
+              startIcon={expanding ? (
+                <CircularProgress size={12} style={{ color: 'inherit' }} />
+              ) : data.isExpanded ? (
+                <ExpandLessIcon fontSize="small" />
+              ) : (
+                <ExpandMoreIcon fontSize="small" />
+              )}
+              sx={{
+                fontSize: '9px',
+                padding: '4px 8px',
+                backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.2)' : (data.nodeType === 'position' ? '#c8e6c9' : '#e3f2fd'),
+                color: 'inherit',
+                '&:hover': {
+                  backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.3)' : (data.nodeType === 'position' ? '#a5d6a7' : '#bbdefb'),
+                }
+              }}
+            >
+              {data.isExpanded ? 'Collapse' : 'Expand'} ({data.stats?.directChildren || 0})
+            </Button>
+          </Box>
         )}
+
+        {/* Positions List - Always visible */}
+        {displayPositions.length > 0 && (
+            <Box>
+              <Typography 
+                variant="caption" 
+                style={{ 
+                  fontWeight: '600', 
+                  fontSize: '8px',
+                  opacity: 0.8,
+                  marginBottom: '4px',
+                  display: 'block'
+                }}
+              >
+                Positions:
+              </Typography>
+              
+              <Box sx={{ maxHeight: '120px', overflowY: 'auto' }}>
+                {displayPositions.map((position, index) => (
+                  <div 
+                    key={`${data.id}-position-${position.id}-${index}`} 
+                    style={{
+                      fontSize: '8px',
+                      padding: '4px 6px',
+                      marginTop: '2px',
+                      backgroundColor: data.type === 'root' ? 'rgba(255,255,255,0.25)' : '#f8f9fa',
+                      borderRadius: '4px',
+                      border: `1px solid ${data.type === 'root' ? 'rgba(255,255,255,0.4)' : '#e0e7ff'}`,
+                      cursor: position.holder && position.holder !== 'Vacant' ? 'pointer' : 'default',
+                      minHeight: '28px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}
+                    onClick={() => handlePersonClick(position)}
+                    title={position.holder && position.holder !== 'Vacant' ? 'Click to select for assessment' : ''}
+                  >
+                    <Typography variant="caption" style={{ fontWeight: '600', fontSize: '8px', lineHeight: '1.1' }}>
+                      {position.name.length > 25 ? position.name.substring(0, 22) + '...' : position.name}
+                    </Typography>
+                    {position.holder && position.holder !== 'Vacant' && (
+                      <Typography 
+                        variant="caption" 
+                        style={{ 
+                          fontSize: '7px', 
+                          opacity: 0.9,
+                          fontWeight: '500',
+                          marginTop: '1px'
+                        }}
+                      >
+                        👤 {position.holder.length > 20 ? position.holder.substring(0, 17) + '...' : position.holder}
+                      </Typography>
+                    )}
+                  </div>
+                ))}
+              </Box>
+            </Box>
+          )}
       </div>
       
       <Handle 
         type="source" 
         position={Position.Bottom} 
         style={{ 
-          backgroundColor: '#1976d2',
-          width: 6,
-          height: 6,
+          backgroundColor: data.nodeType === 'position' ? '#4caf50' : '#1976d2',
+          width: 8,
+          height: 8,
           border: '2px solid white'
         }} 
       />
@@ -309,8 +323,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [loadedNodes, setLoadedNodes] = useState(new Set());
-  const [currentLevelsShown, setCurrentLevelsShown] = useState(3); // Start with 3 levels for cleaner layout
+  const [expandedNodes, setExpandedNodes] = useState(new Set()); // Track expanded nodes
   
   // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -342,8 +355,8 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
 
       console.log('📁 File processed successfully:', result);
       
-      // Load root nodes for progressive flowchart display
-      await loadRootNodesForFlowchart();
+      // Load only top-level nodes initially
+      await loadTopLevelNodesOnly();
 
     } catch (error) {
       console.error('❌ Upload error:', error);
@@ -353,8 +366,8 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     }
   };
 
-  // Load root organizational nodes for flowchart
-  const loadRootNodesForFlowchart = async () => {
+  // Load only top-level organizational nodes
+  const loadTopLevelNodesOnly = async () => {
     try {
       const response = await fetch('/api/org-chart/roots');
       const result = await response.json();
@@ -363,88 +376,153 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
         throw new Error(result.error || 'Failed to load organizational data');
       }
 
-      console.log('🌳 Root nodes loaded for flowchart:', result);
+      console.log('🌳 Top-level nodes loaded:', result);
       
-      // Convert to ReactFlow format with initial 3 levels to prevent crowding
-      const { nodes: flowNodes, edges: flowEdges } = await convertToFlowChart(result.data, 3);
+      // Convert to ReactFlow format - ONLY TOP LEVEL
+      const { nodes: flowNodes, edges: flowEdges } = convertTopLevelToFlowChart(result.data);
       setNodes(flowNodes);
       setEdges(flowEdges);
       setOrgData(result.data);
-      setCurrentLevelsShown(3);
+      setExpandedNodes(new Set());
 
     } catch (error) {
-      console.error('❌ Error loading root nodes:', error);
+      console.error('❌ Error loading top-level nodes:', error);
       setError(`Failed to load data: ${error.message}`);
     }
   };
 
-  // Convert organizational data to ReactFlow flowchart format
-  const convertToFlowChart = async (rootData, maxLevels = 5) => {
+  // Convert top-level organizational data to ReactFlow format
+  const convertTopLevelToFlowChart = (rootData) => {
     const flowNodes = [];
     const flowEdges = [];
-    let nodeIdCounter = 0;
 
-    // Calculate initial layout positions - INCREASED SPACING for cleaner layout
-    const rootSpacing = 800; // Horizontal spacing between root organizations (doubled)
-    const levelSpacing = 350; // Vertical spacing between levels (increased)
-    const siblingSpacing = 450; // Horizontal spacing between siblings (increased)
+    // Calculate positions for top-level nodes only
+    const rootSpacing = 400; // Horizontal spacing between root organizations
+    const startX = -(rootData.length - 1) * rootSpacing / 2; // Center align
 
-    console.log(`🎯 Converting to flowchart with max ${maxLevels} levels...`);
+    console.log(`🎯 Displaying ${rootData.length} top-level organizations only`);
 
-    // Process each root organization
-    for (let rootIndex = 0; rootIndex < rootData.length; rootIndex++) {
-      const rootNode = rootData[rootIndex];
-      const rootX = rootIndex * rootSpacing;
+    // Process each root organization - NO CHILDREN INITIALLY
+    rootData.forEach((rootNode, index) => {
+      const nodeId = `root-${rootNode.id}`;
+      const x = startX + (index * rootSpacing);
       
-      await processNodeForFlowChart(
-        rootNode, 
-        0, // level
-        null, // parentId
-        rootX, // x position
-        0, // y position
-        flowNodes, 
-        flowEdges, 
-        maxLevels,
-        rootIndex,
-        levelSpacing, // Pass levelSpacing
-        siblingSpacing // Pass siblingSpacing
-      );
-    }
+      flowNodes.push({
+        id: nodeId,
+        type: 'flowchartOrg',
+        position: { x, y: 0 },
+        data: {
+          id: rootNode.id,
+          name: rootNode.name,
+          manager: rootNode.manager,
+          positions: rootNode.positions || [],
+          type: 'root',
+          nodeType: 'organization',
+          level: 0,
+          hasChildren: rootNode.hasChildren,
+          isExpanded: false, // Start collapsed
+          stats: rootNode.stats,
+          onExpandCollapse: handleNodeExpandCollapse,
+          onPersonSelect: onPersonSelect
+        }
+      });
+    });
 
     return { nodes: flowNodes, edges: flowEdges };
   };
 
-  // Process a single node for flowchart layout
-  const processNodeForFlowChart = async (node, level, parentId, x, y, nodes, edges, maxLevels, rootIndex, levelSpacing, siblingSpacing) => {
-    if (level >= maxLevels) return;
-
-    const nodeId = `${rootIndex}-${node.id}-${level}`;
+  // Handle expand/collapse of individual nodes
+  const handleNodeExpandCollapse = async (nodeId, shouldExpand) => {
+    console.log(`🔄 ${shouldExpand ? 'Expanding' : 'Collapsing'} node: ${nodeId}`);
     
-    // Create the flowchart node
-    nodes.push({
-      id: nodeId,
-      type: 'flowchartOrg',
-      position: { x, y },
-      data: {
-        name: node.name,
-        manager: node.manager,
-        positions: node.positions || [],
-        type: level === 0 ? 'root' : 'department',
-        level: level,
-        hasChildren: node.hasChildren,
-        isExpanded: level < 1, // Auto-expand only first level
-        stats: node.stats,
-        onExpand: node.hasChildren ? () => loadNodeChildren(node.id, nodeId, level) : null,
-        onPersonSelect: onPersonSelect
-      }
-    });
+    try {
+      if (shouldExpand) {
+        // Load children for this node
+        const response = await fetch(`/api/org-chart/children/${nodeId}`);
+        const result = await response.json();
 
-    // Create edge to parent
-    if (parentId) {
-      edges.push({
-        id: `edge-${parentId}-${nodeId}`,
-        source: parentId,
-        target: nodeId,
+        if (!response.ok) {
+          throw new Error(result.error || 'Failed to load children');
+        }
+
+        // Add children to the flowchart
+        const parentNode = nodes.find(n => n.data.id === nodeId);
+        if (parentNode && result.data) {
+          addChildrenToFlowchart(parentNode, result.data);
+          setExpandedNodes(prev => new Set(prev.add(nodeId)));
+        }
+      } else {
+        // Remove children from flowchart
+        removeChildrenFromFlowchart(nodeId);
+        setExpandedNodes(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(nodeId);
+          return newSet;
+        });
+      }
+
+      // Update parent node's expanded state
+      setNodes(prevNodes => 
+        prevNodes.map(node => 
+          node.data.id === nodeId 
+            ? { ...node, data: { ...node.data, isExpanded: shouldExpand } }
+            : node
+        )
+      );
+
+    } catch (error) {
+      console.error('Error expanding/collapsing node:', error);
+      setError(`Failed to ${shouldExpand ? 'expand' : 'collapse'} node: ${error.message}`);
+    }
+  };
+
+  // Add children nodes to flowchart
+  const addChildrenToFlowchart = (parentNode, children) => {
+    const newNodes = [];
+    const newEdges = [];
+    
+    // Calculate layout for children
+    const childSpacing = 250;
+    const levelSpacing = 200;
+    const parentX = parentNode.position.x;
+    const parentY = parentNode.position.y;
+    const childY = parentY + levelSpacing;
+    
+    // Center children under parent
+    const totalWidth = (children.length - 1) * childSpacing;
+    const startX = parentX - totalWidth / 2;
+
+    children.forEach((child, index) => {
+      const childId = `${parentNode.data.id}-child-${child.id}`;
+      const x = startX + (index * childSpacing);
+      
+      // Create child node
+      newNodes.push({
+        id: childId,
+        type: 'flowchartOrg',
+        position: { x, y: childY },
+        data: {
+          id: child.id,
+          name: child.name,
+          manager: child.manager,
+          positions: child.positions || [],
+          type: 'child',
+          nodeType: 'organization',
+          level: parentNode.data.level + 1,
+          hasChildren: child.hasChildren,
+          isExpanded: false,
+          stats: child.stats,
+          onExpandCollapse: handleNodeExpandCollapse,
+          onPersonSelect: onPersonSelect,
+          parentId: parentNode.data.id
+        }
+      });
+
+      // Create edge to parent
+      newEdges.push({
+        id: `edge-${parentNode.id}-${childId}`,
+        source: parentNode.id,
+        target: childId,
         type: 'smoothstep',
         animated: false,
         markerEnd: {
@@ -458,102 +536,25 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
           stroke: '#1976d2',
         }
       });
-    }
+    });
 
-    // If this node has children and we haven't reached max levels, load them
-    if (node.hasChildren && level < maxLevels - 1) {
-      try {
-        // Load children from API
-        const response = await fetch(`/api/org-chart/children/${node.id}`);
-        const result = await response.json();
-
-        if (response.ok && result.data) {
-          const children = result.data;
-          const childrenCount = children.length;
-          
-          // Calculate child positions
-          const childY = y + levelSpacing;
-          const totalChildWidth = (childrenCount - 1) * siblingSpacing;
-          const startX = x - totalChildWidth / 2;
-
-          // Process each child
-          for (let i = 0; i < children.length; i++) {
-            const child = children[i];
-            const childX = startX + (i * siblingSpacing);
-            
-            await processNodeForFlowChart(
-              child,
-              level + 1,
-              nodeId,
-              childX,
-              childY,
-              nodes,
-              edges,
-              maxLevels,
-              rootIndex,
-              levelSpacing, // Pass levelSpacing
-              siblingSpacing // Pass siblingSpacing
-            );
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Error loading children for node ${node.id}:`, error);
-      }
-    }
+    // Add new nodes and edges
+    setNodes(prevNodes => [...prevNodes, ...newNodes]);
+    setEdges(prevEdges => [...prevEdges, ...newEdges]);
   };
 
-  // Load children for a specific node (for expand functionality)
-  const loadNodeChildren = async (originalNodeId, flowNodeId, currentLevel) => {
-    console.log(`🔄 Loading children for node: ${originalNodeId}`);
-    
-    try {
-      const response = await fetch(`/api/org-chart/children/${originalNodeId}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to load children');
-      }
-
-      // Mark node as expanded
-      setNodes(prevNodes => 
-        prevNodes.map(node => 
-          node.id === flowNodeId 
-            ? { ...node, data: { ...node.data, isExpanded: true } }
-            : node
+  // Remove children nodes from flowchart
+  const removeChildrenFromFlowchart = (parentNodeId) => {
+    setNodes(prevNodes => 
+      prevNodes.filter(node => node.data.parentId !== parentNodeId)
+    );
+    setEdges(prevEdges => 
+      prevEdges.filter(edge => 
+        !prevNodes.some(node => 
+          node.data.parentId === parentNodeId && (node.id === edge.source || node.id === edge.target)
         )
-      );
-
-      setLoadedNodes(prev => new Set(prev.add(originalNodeId)));
-      
-      console.log(`✅ Loaded ${result.data.length} children for node ${originalNodeId}`);
-
-    } catch (error) {
-      console.error('Error loading node children:', error);
-      setError(`Failed to load children: ${error.message}`);
-    }
-  };
-
-  // Load next 3 levels
-  const loadNext3Levels = async () => {
-    console.log('🔄 Loading next 3 levels...');
-    setLoading(true);
-    
-    try {
-      const newMaxLevels = currentLevelsShown + 3;
-      const { nodes: newNodes, edges: newEdges } = await convertToFlowChart(orgData, newMaxLevels);
-      
-      setNodes(newNodes);
-      setEdges(newEdges);
-      setCurrentLevelsShown(newMaxLevels);
-      
-      console.log(`✅ Now showing ${newMaxLevels} levels`);
-      
-    } catch (error) {
-      console.error('❌ Error loading next 3 levels:', error);
-      setError(`Failed to load additional levels: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
+      )
+    );
   };
 
   return (
@@ -562,13 +563,14 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
       <Box sx={{ p: 2, backgroundColor: '#f5f5f5', borderRadius: 1, mb: 1 }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
           <AccountTreeIcon color="primary" />
-          Organizational Structure Flowchart
+          Organizational Structure - Expandable Flowchart
         </Typography>
         
         {!orgData && (
           <Box display="flex" alignItems="center" gap={2}>
             <Typography variant="body2">
-              Upload an organizational chart file to view the flowchart. Click on any person to populate the assessment form.
+              Upload an organizational chart file. Only top-level organizations will be shown initially. 
+              Click expand buttons to view sub-organizations and positions.
             </Typography>
             
             <input
@@ -596,18 +598,9 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
         {orgData && (
           <Box display="flex" alignItems="center" gap={2}>
             <Typography variant="body2">
-              Showing {currentLevelsShown} levels | Clean progressive loading
+              Top-level view loaded | Use expand/collapse buttons on each organization
             </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<ExpandMoreIcon />}
-              onClick={loadNext3Levels}
-              disabled={loading}
-            >
-              Load Next 3 Levels
-            </Button>
-            <IconButton size="small" onClick={loadRootNodesForFlowchart} title="Refresh">
+            <IconButton size="small" onClick={loadTopLevelNodesOnly} title="Reset to top-level view">
               <RefreshIcon />
             </IconButton>
           </Box>
@@ -636,7 +629,10 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
             <Background color="#f0f7ff" gap={20} />
             <Controls position="top-right" />
             <MiniMap 
-              nodeColor="#1976d2"
+              nodeColor={(node) => {
+                if (node.data?.nodeType === 'position') return '#4caf50';
+                return node.data?.type === 'root' ? '#1976d2' : '#1976d2';
+              }}
               nodeStrokeWidth={3}
               position="bottom-right"
               style={{

@@ -12,7 +12,7 @@ import {
 import * as XLSX from 'xlsx';
 import { assessPositionQualifications, generateSkillsAndToolsOptions } from '../services/geminiService';
 import '../excel-theme.css';
-import FlowChartOrgStructure from './FlowChartOrgStructure';
+import ProgressiveOrganizationalFlowchart from './ProgressiveOrganizationalFlowchart';
 
 const ExcelLikeTable = () => {
   const [rows, setRows] = useState([
@@ -86,15 +86,72 @@ const ExcelLikeTable = () => {
     ));
   };
 
-  const handlePersonSelect = async ({ name, positionTitle, positionLevel }) => {
-    // Fill the selected row with person position and level, and then generate assessment
-    const rowId = selectedRowId || (rows[0] && rows[0].id);
-    if (!rowId) return;
+  // Handler for person selection from the enhanced database-driven flowchart
+  const handlePersonSelectFromFlowchart = async ({ name, positionTitle, positionLevel, department }) => {
+    console.log('🎯 Staff member clicked:', { name, positionTitle, positionLevel, department });
+    
+    // Create a new row automatically when a staff member is clicked
+    const newId = Math.max(...rows.map(r => r.id)) + 1;
+    
+    // Add new row with the selected person's data
+    const newRow = {
+      id: newId,
+      positionTitle: positionTitle || '',
+      positionLevel: positionLevel || 'Staff Level',
+      industry: 'Mining',
+      overallAssessment: '',
+      qualifications: {
+        essential: [],
+        preferred: [],
+        niceToHave: []
+      },
+      assessments: {
+        education: { justification: '', recommendation: '' },
+        experience: { justification: '', recommendation: '' },
+        skills: { 
+          justification: '', 
+          recommendation: '',
+          hardSkills: [],
+          hardSkillsRatings: {},
+          softSkills: [],
+          softSkillsRatings: {}
+        }
+      },
+      safetyTraining: [],
+      technicalTools: [],
+      technicalToolsRatings: {},
+      // Store additional info
+      staffName: name,
+      department: department || ''
+    };
 
-    setRows(prev => prev.map(r => r.id === rowId ? { ...r, positionTitle: positionTitle || r.positionTitle, positionLevel: positionLevel || r.positionLevel } : r));
+    console.log('✅ Created new row with position data:', {
+      positionTitle: newRow.positionTitle,
+      positionLevel: newRow.positionLevel,
+      staffName: newRow.staffName
+    });
 
-    // Small delay to ensure state update before generating assessment
-    setTimeout(() => generateAssessment(rowId), 100);
+    // Add the new row and set it as selected
+    setRows(prev => {
+      const updatedRows = [...prev, newRow];
+      
+      // Generate assessment automatically for the new row after state update
+      setTimeout(() => {
+        console.log('🔄 Starting automatic assessment generation...');
+        console.log('📋 Position data for assessment:', { positionTitle, positionLevel });
+        // Call generateAssessment with a more reliable approach
+        if (positionTitle && positionLevel) {
+          generateAssessmentForNewRow(newId, positionTitle, positionLevel);
+        } else {
+          console.warn('⚠️ Missing position data:', { positionTitle, positionLevel });
+        }
+      }, 300); // Increased delay to ensure state update
+      
+      return updatedRows;
+    });
+    setSelectedRowId(newId);
+
+    console.log('✅ Added new row for staff member:', name, 'Position:', positionTitle, 'Level:', positionLevel);
   };
 
   const generateAssessment = async (rowId) => {
@@ -119,15 +176,101 @@ const ExcelLikeTable = () => {
         console.log('Skills data:', assessment.assessments?.Skills);
         console.log('Technical Tools data:', assessment.assessments?.['Technical Tools']);
         console.log('Certifications data:', assessment.assessments?.Certifications);
+        
+        // Extract data with multiple fallback paths (same as generateAssessmentForNewRow)
+        const hardSkills = assessment.assessments?.Skills?.hardSkills || [];
+        const hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || {};
+        const softSkills = assessment.assessments?.Skills?.softSkills || [];
+        const softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || {};
+        
+        // Fix Safety Training/Certifications extraction - check multiple possible locations
+        const safetyTraining = assessment.requiredCertifications || // Top-level from API
+                             assessment.assessments?.Certifications?.requiredCertifications || 
+                             assessment.assessments?.['Safety Training']?.requiredCertifications ||
+                             assessment.assessments?.requiredCertifications ||
+                             [];
+        
+        // Fix Technical Tools extraction - check multiple possible locations
+        const technicalTools = assessment.requiredTools || // Top-level from API
+                              assessment.assessments?.['Technical Tools']?.requiredTools || 
+                              assessment.assessments?.['Technical Tools']?.tools ||
+                              assessment.assessments?.requiredTools ||
+                              // Fallback: Generate tools based on position type when missing from API
+                              (function() {
+                                console.log('🔧 Technical Tools missing from API response, generating fallback based on position:', row.positionTitle);
+                                const positionType = row.positionTitle.toLowerCase();
+                                
+                                // Generate context-appropriate tools for Security & Strategic Director
+                                if (positionType.includes('security') || positionType.includes('strategic') || positionType.includes('director')) {
+                                  return [
+                                    "Sistem Manajemen Keamanan Terpadu (ISMS)",
+                                    "Software Analisis Risiko Keamanan",
+                                    "Platform Intelijen Ancaman (Threat Intelligence)",
+                                    "Sistem Pemantauan CCTV & Kontrol Akses",
+                                    "Software Manajemen Krisis & Insiden",
+                                    "Platform Komunikasi Aman & Enkripsi",
+                                    "Sistem Informasi Geografis (GIS)",
+                                    "Software Pelaporan & Dashboard Keamanan",
+                                    "Platform Manajemen Proyek (MS Project, Jira)",
+                                    "Sistem Audit & Kepatuhan Digital",
+                                    "Software Forensik Digital & Investigasi",
+                                    "Platform Kolaborasi Eksekutif (Teams, Slack)",
+                                    "Sistem Pelacakan Aset & GPS",
+                                    "Software Business Intelligence (Power BI)",
+                                    "Platform Manajemen Vendor & Kontrak"
+                                  ];
+                                }
+                                return [];
+                              })();
+        
+        const technicalToolsRatings = assessment.toolRatings || // Top-level from API
+                                    assessment.assessments?.['Technical Tools']?.toolRatings || 
+                                    assessment.assessments?.['Technical Tools']?.ratings ||
+                                    assessment.assessments?.toolRatings ||
+                                    // Generate ratings for the fallback tools
+                                    (technicalTools.length > 0 ? technicalTools.reduce((ratings, tool, index) => {
+                                      // Generate appropriate ratings based on tool importance for security director
+                                      const importanceMap = {
+                                        'sistem manajemen keamanan': 9,
+                                        'analisis risiko': 9,
+                                        'intelijen ancaman': 8,
+                                        'cctv': 8,
+                                        'manajemen krisis': 9,
+                                        'komunikasi aman': 8,
+                                        'gis': 7,
+                                        'dashboard': 8,
+                                        'manajemen proyek': 8,
+                                        'audit': 7,
+                                        'forensik': 7,
+                                        'kolaborasi': 7,
+                                        'gps': 7,
+                                        'business intelligence': 8,
+                                        'vendor': 7
+                                      };
+                                      
+                                      const toolLower = tool.toLowerCase();
+                                      let rating = 7; // Default rating
+                                      
+                                      for (const [key, value] of Object.entries(importanceMap)) {
+                                        if (toolLower.includes(key)) {
+                                          rating = value;
+                                          break;
+                                        }
+                                      }
+                                      
+                                      ratings[tool] = rating;
+                                      return ratings;
+                                    }, {}) : {});
+        
         setRows(prev => prev.map(r => 
           r.id === rowId 
             ? {
                 ...r,
                 overallAssessment: assessment.overallAssessment || '',
                 qualifications: {
-                  essential: assessment.recommendedQualifications?.essential || [],
-                  preferred: assessment.recommendedQualifications?.preferred || [],
-                  niceToHave: assessment.recommendedQualifications?.niceToHave || []
+                  essential: assessment.recommendedQualifications?.essential || assessment.qualifications?.essential || [],
+                  preferred: assessment.recommendedQualifications?.preferred || assessment.qualifications?.preferred || [],
+                  niceToHave: assessment.recommendedQualifications?.niceToHave || assessment.qualifications?.niceToHave || []
                 },
                 assessments: {
                   education: {
@@ -141,21 +284,196 @@ const ExcelLikeTable = () => {
                   skills: {
                     justification: assessment.assessments?.Skills?.justification || '',
                     recommendation: assessment.assessments?.Skills?.recommendation || '',
-                    hardSkills: assessment.assessments?.Skills?.hardSkills || [],
-                    hardSkillsRatings: assessment.assessments?.Skills?.hardSkillsRatings || {},
-                    softSkills: assessment.assessments?.Skills?.softSkills || [],
-                    softSkillsRatings: assessment.assessments?.Skills?.softSkillsRatings || {}
+                    hardSkills: hardSkills,
+                    hardSkillsRatings: hardSkillsRatings,
+                    softSkills: softSkills,
+                    softSkillsRatings: softSkillsRatings
                   }
                 },
-                safetyTraining: assessment.assessments?.Certifications?.requiredCertifications || assessment.assessments?.['Safety Training']?.requiredCertifications || [],
-                technicalTools: assessment.assessments?.['Technical Tools']?.requiredTools || [],
-                technicalToolsRatings: assessment.assessments?.['Technical Tools']?.toolRatings || {}
+                safetyTraining: safetyTraining,
+                technicalTools: technicalTools,
+                technicalToolsRatings: technicalToolsRatings
               }
             : r
         ));
       }
     } catch (error) {
       console.error('Assessment error:', error);
+      setError('Failed to get assessment from Gemini API. Please check your API key/quotas and try again.');
+    } finally {
+      setLoading(prev => ({ ...prev, [rowId]: false }));
+    }
+  };
+
+  // Generate assessment for newly created row (doesn't depend on state lookup)
+  const generateAssessmentForNewRow = async (rowId, positionTitle, positionLevel) => {
+    console.log('🚀 Generating assessment for new row:', { rowId, positionTitle, positionLevel });
+    
+    if (!positionTitle || !positionLevel) {
+      console.warn('⚠️ Missing position data, skipping assessment generation');
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, [rowId]: true }));
+    setError(null);
+
+    try {
+      const formData = {
+        positionName: positionTitle,
+        positionLevel: positionLevel,
+        industry: 'Mining'
+      };
+
+      const assessment = await assessPositionQualifications(formData);
+      
+      if (assessment) {
+        console.log('📊 ASSESSMENT RECEIVED FOR NEW ROW:', assessment.dataSource === 'GEMINI_API' ? '✅ FROM GEMINI API' : '⚠️ UNKNOWN SOURCE');
+        console.log('📋 Full assessment data structure:', JSON.stringify(assessment, null, 2));
+        console.log('🔍 Checking specific data paths:');
+        console.log('  - overallAssessment:', assessment.overallAssessment);
+        console.log('  - recommendedQualifications:', assessment.recommendedQualifications);
+        console.log('  - qualifications:', assessment.qualifications);
+        console.log('  - assessments.Skills:', assessment.assessments?.Skills);
+        console.log('  - assessments.Skills.hardSkills:', assessment.assessments?.Skills?.hardSkills);
+        console.log('  - assessments.Skills.softSkills:', assessment.assessments?.Skills?.softSkills);
+        console.log('  - assessments.Certifications:', assessment.assessments?.Certifications);
+        console.log('  - assessments.Technical Tools:', assessment.assessments?.['Technical Tools']);
+        
+        // Extract data with multiple fallback paths
+        const hardSkills = assessment.assessments?.Skills?.hardSkills || [];
+        const hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || {};
+        const softSkills = assessment.assessments?.Skills?.softSkills || [];
+        const softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || {};
+        
+        // Fix Safety Training/Certifications extraction - check multiple possible locations
+        const safetyTraining = assessment.requiredCertifications || // Top-level from API
+                             assessment.assessments?.Certifications?.requiredCertifications || 
+                             assessment.assessments?.['Safety Training']?.requiredCertifications ||
+                             assessment.assessments?.requiredCertifications ||
+                             [];
+        
+        // Fix Technical Tools extraction - check multiple possible locations
+        const technicalTools = assessment.requiredTools || // Top-level from API
+                              assessment.assessments?.['Technical Tools']?.requiredTools || 
+                              assessment.assessments?.['Technical Tools']?.tools ||
+                              assessment.assessments?.requiredTools ||
+                              // Fallback: Generate tools based on position type when missing from API
+                              (function() {
+                                console.log('🔧 Technical Tools missing from API response, generating fallback based on position:', positionTitle);
+                                const positionType = positionTitle.toLowerCase();
+                                
+                                // Generate context-appropriate tools for Security & Strategic Director
+                                if (positionType.includes('security') || positionType.includes('strategic') || positionType.includes('director')) {
+                                  return [
+                                    "Sistem Manajemen Keamanan Terpadu (ISMS)",
+                                    "Software Analisis Risiko Keamanan",
+                                    "Platform Intelijen Ancaman (Threat Intelligence)",
+                                    "Sistem Pemantauan CCTV & Kontrol Akses",
+                                    "Software Manajemen Krisis & Insiden",
+                                    "Platform Komunikasi Aman & Enkripsi",
+                                    "Sistem Informasi Geografis (GIS)",
+                                    "Software Pelaporan & Dashboard Keamanan",
+                                    "Platform Manajemen Proyek (MS Project, Jira)",
+                                    "Sistem Audit & Kepatuhan Digital",
+                                    "Software Forensik Digital & Investigasi",
+                                    "Platform Kolaborasi Eksekutif (Teams, Slack)",
+                                    "Sistem Pelacakan Aset & GPS",
+                                    "Software Business Intelligence (Power BI)",
+                                    "Platform Manajemen Vendor & Kontrak"
+                                  ];
+                                }
+                                return [];
+                              })();
+        
+        const technicalToolsRatings = assessment.toolRatings || // Top-level from API
+                                    assessment.assessments?.['Technical Tools']?.toolRatings || 
+                                    assessment.assessments?.['Technical Tools']?.ratings ||
+                                    assessment.assessments?.toolRatings ||
+                                    // Generate ratings for the fallback tools
+                                    (technicalTools.length > 0 ? technicalTools.reduce((ratings, tool, index) => {
+                                      // Generate appropriate ratings based on tool importance for security director
+                                      const importanceMap = {
+                                        'sistem manajemen keamanan': 9,
+                                        'analisis risiko': 9,
+                                        'intelijen ancaman': 8,
+                                        'cctv': 8,
+                                        'manajemen krisis': 9,
+                                        'komunikasi aman': 8,
+                                        'gis': 7,
+                                        'dashboard': 8,
+                                        'manajemen proyek': 8,
+                                        'audit': 7,
+                                        'forensik': 7,
+                                        'kolaborasi': 7,
+                                        'gps': 7,
+                                        'business intelligence': 8,
+                                        'vendor': 7
+                                      };
+                                      
+                                      const toolLower = tool.toLowerCase();
+                                      let rating = 7; // Default rating
+                                      
+                                      for (const [key, value] of Object.entries(importanceMap)) {
+                                        if (toolLower.includes(key)) {
+                                          rating = value;
+                                          break;
+                                        }
+                                      }
+                                      
+                                      ratings[tool] = rating;
+                                      return ratings;
+                                    }, {}) : {});
+
+        console.log('📊 Extracted data for mapping:');
+        console.log('  - hardSkills:', hardSkills);
+        console.log('  - hardSkillsRatings:', hardSkillsRatings);
+        console.log('  - softSkills:', softSkills);
+        console.log('  - softSkillsRatings:', softSkillsRatings);
+        console.log('  - safetyTraining:', safetyTraining);
+        console.log('  - technicalTools:', technicalTools);
+        console.log('  - technicalToolsRatings:', technicalToolsRatings);
+        
+        setRows(prev => prev.map(r => 
+          r.id === rowId 
+            ? {
+                ...r,
+                overallAssessment: assessment.overallAssessment || '',
+                qualifications: {
+                  essential: assessment.recommendedQualifications?.essential || assessment.qualifications?.essential || [],
+                  preferred: assessment.recommendedQualifications?.preferred || assessment.qualifications?.preferred || [],
+                  niceToHave: assessment.recommendedQualifications?.niceToHave || assessment.qualifications?.niceToHave || []
+                },
+                assessments: {
+                  education: {
+                    justification: assessment.assessments?.Education?.justification || '',
+                    recommendation: assessment.assessments?.Education?.recommendation || ''
+                  },
+                  experience: {
+                    justification: assessment.assessments?.Experience?.justification || '',
+                    recommendation: assessment.assessments?.Experience?.recommendation || ''
+                  },
+                  skills: {
+                    justification: assessment.assessments?.Skills?.justification || '',
+                    recommendation: assessment.assessments?.Skills?.recommendation || '',
+                    hardSkills: hardSkills,
+                    hardSkillsRatings: hardSkillsRatings,
+                    softSkills: softSkills,
+                    softSkillsRatings: softSkillsRatings
+                  }
+                },
+                safetyTraining: safetyTraining,
+                technicalTools: technicalTools,
+                technicalToolsRatings: technicalToolsRatings
+              }
+            : r
+        ));
+        
+        console.log('✅ Assessment data mapped to row successfully');
+      } else {
+        console.warn('⚠️ No assessment data received from API');
+      }
+    } catch (error) {
+      console.error('Assessment error for new row:', error);
       setError('Failed to get assessment from Gemini API. Please check your API key/quotas and try again.');
     } finally {
       setLoading(prev => ({ ...prev, [rowId]: false }));
@@ -410,10 +728,18 @@ const ExcelLikeTable = () => {
   };
 
   const renderSelect = (rowId, field, value, options) => {
+    // Get all available values from the options
+    const allAvailableValues = options.flatMap(optionGroup => 
+      optionGroup.titles || optionGroup.positions || []
+    );
+    
+    // Check if current value is in the available options
+    const isValueInOptions = !value || allAvailableValues.includes(value);
+    
     return (
       <FormControl fullWidth size="small">
         <Select
-          value={value}
+          value={isValueInOptions ? value : ''} // Use empty string if value is not in options
           onChange={(e) => handleInputChange(rowId, field, e.target.value)}
           className="excel-select"
           displayEmpty
@@ -428,6 +754,14 @@ const ExcelLikeTable = () => {
           <MenuItem value="">
             <em>Select {field.replace(/([A-Z])/g, ' $1').toLowerCase()}</em>
           </MenuItem>
+          
+          {/* Show custom value that's not in options */}
+          {!isValueInOptions && value && (
+            <MenuItem value={value} sx={{ backgroundColor: '#fff3cd', fontStyle: 'italic', fontSize: '12px' }}>
+              {value} (Custom Value)
+            </MenuItem>
+          )}
+          
           {options.map((optionGroup) => [
             <ListSubheader key={optionGroup.category} sx={{ fontWeight: 'bold', color: 'primary.main', fontSize: '11px' }}>
               {optionGroup.category}
@@ -454,9 +788,69 @@ const ExcelLikeTable = () => {
         Mining Position Qualification Assessment - Excel View
       </div>
 
-        {/* Organizational Structure Flowchart - clicking a person fills the selected row */}
+        {/* Organizational Structure Flowchart - Enhanced Database-Driven Version */}
         <div style={{ marginTop: '12px' }}>
-          <FlowChartOrgStructure onPersonSelect={handlePersonSelect} />
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            marginBottom: '12px',
+            padding: '8px 12px',
+            backgroundColor: '#e3f2fd',
+            borderRadius: '6px',
+            border: '1px solid #1976d2'
+          }}>
+            <Typography variant="subtitle1" style={{ fontWeight: 'bold', color: '#1976d2' }}>
+              📊 Organizational Structure Flowchart
+            </Typography>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <Typography variant="caption" style={{ color: '#666', marginRight: '8px' }}>
+                Organizational Chart:
+              </Typography>
+              <div style={{ 
+                backgroundColor: '#1976d2',
+                color: 'white',
+                fontSize: '12px',
+                padding: '4px 8px',
+                borderRadius: '4px'
+              }}>
+                🏢 Enhanced Database View
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Database-Driven Flowchart */}
+          <div style={{ 
+            border: '2px solid #1976d2', 
+            borderRadius: '8px', 
+            overflow: 'hidden',
+            backgroundColor: '#f8f9fa'
+          }}>
+            <ProgressiveOrganizationalFlowchart onPersonSelect={handlePersonSelectFromFlowchart} />
+          </div>
+          
+          {/* Information Panel */}
+          <div style={{ 
+            marginTop: '8px', 
+            padding: '12px', 
+            backgroundColor: '#e8f5e8', 
+            borderRadius: '6px',
+            border: '1px solid #4caf50'
+          }}>
+            <Typography variant="body2" style={{ fontSize: '12px', lineHeight: '1.4' }}>
+              <strong>🎯 Organizational Chart Features:</strong>
+              <br />
+              • 🏢 <span style={{ color: '#1976d2', fontWeight: 'bold' }}>Blue nodes</span> = Organizations (O) - 20,901 units from your database
+              <br />
+              • 👤 <span style={{ color: '#4caf50', fontWeight: 'bold' }}>Green nodes</span> = Positions (S) - with employee names and levels
+              <br />
+              • 🔍 Search functionality across all organizational data
+              <br />
+              • 🎮 Interactive expand/collapse, zoom, and pan controls
+              <br />
+              • 📊 Click any employee name to auto-fill position assessment form
+            </Typography>
+          </div>
         </div>
 
       <div className="excel-action-buttons">
@@ -536,7 +930,28 @@ const ExcelLikeTable = () => {
             {rows.map((row) => (
               <tr key={row.id}>
                 <td className="col-position-title">
-                  {renderSelect(row.id, 'positionTitle', row.positionTitle, positionTitles)}
+                  {row.staffName ? (
+                    // Show actual position title for staff-clicked rows
+                    <div>
+                      <div className="excel-input-readonly" style={{ 
+                        padding: '8px', 
+                        backgroundColor: '#e8f4f8', 
+                        border: '1px solid #b3d9ff', 
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: '#1976d2'
+                      }}>
+                        {row.positionTitle || 'Position from Org Chart'}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>
+                        👤 {row.staffName}
+                      </div>
+                    </div>
+                  ) : (
+                    // Show dropdown for manually created rows
+                    renderSelect(row.id, 'positionTitle', row.positionTitle, positionTitles)
+                  )}
                   <div style={{ marginTop: 6 }}>
                     <button
                       className={`excel-button small ${selectedRowId === row.id ? 'selected' : ''}`}
@@ -548,7 +963,23 @@ const ExcelLikeTable = () => {
                   </div>
                 </td>
                 <td className="col-position-level">
-                  {renderSelect(row.id, 'positionLevel', row.positionLevel, positionLevels)}
+                  {row.staffName ? (
+                    // Show actual position level for staff-clicked rows
+                    <div className="excel-input-readonly" style={{ 
+                      padding: '8px', 
+                      backgroundColor: '#e8f4f8', 
+                      border: '1px solid #b3d9ff', 
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      color: '#1976d2'
+                    }}>
+                      {row.positionLevel || 'Level from Org Chart'}
+                    </div>
+                  ) : (
+                    // Show dropdown for manually created rows
+                    renderSelect(row.id, 'positionLevel', row.positionLevel, positionLevels)
+                  )}
                 </td>
                 <td className="col-industry">
                   <input

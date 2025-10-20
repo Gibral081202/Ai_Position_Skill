@@ -1,10 +1,11 @@
 require('dotenv').config({ path: '.env.local' });
+require('dotenv').config(); // Also load .env file
 const sql = require('mssql');
 
-// Database configuration from .env.local
+// Database configuration - use production settings as default
 const dbConfig = {
-  server: process.env.DATABASE_HOST || '127.0.0.1',
-  port: parseInt(process.env.DATABASE_PORT) || 1435,
+  server: process.env.DATABASE_HOST || '10.182.128.3',
+  port: parseInt(process.env.DATABASE_PORT) || 1433,
   database: process.env.DATABASE_NAME || 'organization_chart',
   user: process.env.DATABASE_USER || 'sqlvendor1',
   password: process.env.DATABASE_PASSWORD || '1U~xO`2Un-gGqmPj',

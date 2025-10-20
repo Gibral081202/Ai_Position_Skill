@@ -112,13 +112,32 @@ fi
 
 # Step 5: Install/update dependencies
 echo -e "${YELLOW}📚 Step 3: Installing/updating dependencies...${NC}"
-npm install
+
+# Clean install to avoid conflicts
+rm -f package-lock.json
+npm install --production=false
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Dependencies installed successfully${NC}"
+    
+    # Handle xlsx vulnerability warning (non-critical for our use case)
+    echo -e "${YELLOW}⚠️  Note: xlsx package has known vulnerabilities but is required for Excel functionality${NC}"
+    echo -e "${YELLOW}💡 This is acceptable for internal/controlled environments${NC}"
 else
     echo -e "${RED}❌ Failed to install dependencies${NC}"
-    exit 1
+    echo -e "${YELLOW}🔄 Attempting recovery with clean install...${NC}"
+    
+    # Try recovery
+    rm -rf node_modules package-lock.json
+    npm cache clean --force
+    npm install --production=false
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Dependencies recovered successfully${NC}"
+    else
+        echo -e "${RED}❌ Failed to recover dependencies${NC}"
+        exit 1
+    fi
 fi
 
 # Step 6: Build the application

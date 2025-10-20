@@ -13,8 +13,7 @@
     "dev": "react-scripts start",
     "prod": "npm run build && npm run server",
     "deploy:local": "npm run build && pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js",
-    "deploy:server": "git pull && npm install && npm run build && pm2 restart HRAI-Mining-HR",
-    "postinstall": "npm audit fix --audit-level moderate --force"
+    "deploy:server": "git pull && npm install && npm run build && pm2 restart HRAI-Mining-HR"
   },
   "dependencies": {
     "@emotion/react": "^11.11.0",

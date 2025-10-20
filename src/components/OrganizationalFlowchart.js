@@ -422,7 +422,7 @@ const OrganizationalFlowchart = ({ onPersonSelect }) => {
     setError(null);
 
     try {
-      const url = forceRefresh ? '/api/flowchart/hierarchy?refresh=true' : '/api/flowchart/hierarchy';
+      const url = forceRefresh ? '/mining-hr/api/flowchart/hierarchy?refresh=true' : '/mining-hr/api/flowchart/hierarchy';
       const response = await fetch(url);
       const result = await response.json();
 
@@ -563,7 +563,7 @@ const OrganizationalFlowchart = ({ onPersonSelect }) => {
     setSearching(true);
     
     try {
-      const response = await fetch(`/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      const response = await fetch(`/mining-hr/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
       const result = await response.json();
 
       if (!response.ok) {

@@ -798,7 +798,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
 
     try {
       // Use filtered or full endpoint based on toggle
-      const endpoint = useFilteredView ? '/api/flowchart/filtered-hierarchy' : '/api/flowchart/hierarchy';
+      const endpoint = useFilteredView ? '/mining-hr/api/flowchart/filtered-hierarchy' : '/mining-hr/api/flowchart/hierarchy';
       console.log(`📡 Loading ${useFilteredView ? 'filtered' : 'full'} organizational hierarchy from: ${endpoint}`);
       
       const response = await fetch(endpoint);
@@ -971,7 +971,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     setSearching(true);
     
     try {
-      const response = await fetch(`/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      const response = await fetch(`/mining-hr/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
       const result = await response.json();
 
       if (!response.ok) {

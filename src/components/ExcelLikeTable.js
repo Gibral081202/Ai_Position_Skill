@@ -177,23 +177,26 @@ const ExcelLikeTable = () => {
         console.log('Technical Tools data:', assessment.assessments?.['Technical Tools']);
         console.log('Certifications data:', assessment.assessments?.Certifications);
         
-        // 🎯 FIXED: Extract data directly from Gemini API structure (same as generateAssessmentForNewRow)
+        // 🎯 FIXED: Extract data directly from Gemini API root structure
         console.log('🔍 Extracting skills data from Gemini API response (original generateAssessment)...');
         
-        // Extract Hard Skills and Soft Skills from the correct API structure
-        const hardSkills = assessment.assessments?.Skills?.hardSkills || [];
-        const hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || {};
-        const softSkills = assessment.assessments?.Skills?.softSkills || [];
-        const softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || {};
+        // Extract Hard Skills and Soft Skills directly from root level (as returned by Gemini API)
+        const hardSkills = assessment.hardSkills || assessment.assessments?.Skills?.hardSkills || [];
+        const hardSkillsRatings = assessment.hardSkillsRatings || assessment.assessments?.Skills?.hardSkillsRatings || {};
+        const softSkills = assessment.softSkills || assessment.assessments?.Skills?.softSkills || [];
+        const softSkillsRatings = assessment.softSkillsRatings || assessment.assessments?.Skills?.softSkillsRatings || {};
         
-        // Extract Safety Training/Certifications from the correct API structure
-        const safetyTraining = assessment.assessments?.Certifications?.requiredCertifications || 
+        // Extract Safety Training/Certifications directly from root level (as returned by Gemini API)
+        const safetyTraining = assessment.requiredCertifications || 
+                             assessment.assessments?.Certifications?.requiredCertifications || 
                              assessment.assessments?.['Safety Training']?.requiredCertifications ||
                              [];
         
         // Extract Technical Tools from the correct API structure
-        const technicalTools = assessment.assessments?.['Technical Tools']?.requiredTools || [];
-        const technicalToolsRatings = assessment.assessments?.['Technical Tools']?.toolRatings || {};
+        const technicalTools = assessment.technicalTools || 
+                              assessment.assessments?.['Technical Tools']?.requiredTools || [];
+        const technicalToolsRatings = assessment.technicalToolsRatings || 
+                                    assessment.assessments?.['Technical Tools']?.toolRatings || {};
         
         console.log('✅ Successfully extracted from Gemini API (original function):');
         console.log('  - Hard Skills Count:', hardSkills.length);
@@ -296,23 +299,26 @@ const ExcelLikeTable = () => {
         console.log('  - assessments.Certifications:', assessment.assessments?.Certifications);
         console.log('  - assessments.Technical Tools:', assessment.assessments?.['Technical Tools']);
         
-        // 🎯 FIXED: Extract data directly from Gemini API structure
+        // 🎯 FIXED: Extract data directly from Gemini API root structure
         console.log('🔍 Extracting skills data from Gemini API response...');
         
-        // Extract Hard Skills and Soft Skills from the correct API structure
-        const hardSkills = assessment.assessments?.Skills?.hardSkills || [];
-        const hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || {};
-        const softSkills = assessment.assessments?.Skills?.softSkills || [];
-        const softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || {};
+        // Extract Hard Skills and Soft Skills directly from root level (as returned by Gemini API)
+        const hardSkills = assessment.hardSkills || assessment.assessments?.Skills?.hardSkills || [];
+        const hardSkillsRatings = assessment.hardSkillsRatings || assessment.assessments?.Skills?.hardSkillsRatings || {};
+        const softSkills = assessment.softSkills || assessment.assessments?.Skills?.softSkills || [];
+        const softSkillsRatings = assessment.softSkillsRatings || assessment.assessments?.Skills?.softSkillsRatings || {};
         
-        // Extract Safety Training/Certifications from the correct API structure
-        const safetyTraining = assessment.assessments?.Certifications?.requiredCertifications || 
+        // Extract Safety Training/Certifications directly from root level (as returned by Gemini API)
+        const safetyTraining = assessment.requiredCertifications || 
+                             assessment.assessments?.Certifications?.requiredCertifications || 
                              assessment.assessments?.['Safety Training']?.requiredCertifications ||
                              [];
         
         // Extract Technical Tools from the correct API structure
-        const technicalTools = assessment.assessments?.['Technical Tools']?.requiredTools || [];
-        const technicalToolsRatings = assessment.assessments?.['Technical Tools']?.toolRatings || {};
+        const technicalTools = assessment.technicalTools || 
+                              assessment.assessments?.['Technical Tools']?.requiredTools || [];
+        const technicalToolsRatings = assessment.technicalToolsRatings || 
+                                    assessment.assessments?.['Technical Tools']?.toolRatings || {};
         
         console.log('✅ Successfully extracted from Gemini API:');
         console.log('  - Hard Skills Count:', hardSkills.length);

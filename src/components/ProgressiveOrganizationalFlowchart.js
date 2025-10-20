@@ -110,12 +110,33 @@ const ProgressiveOrgNode = ({ data }) => {
 
   // Handle person click for assessment
   const handlePersonClick = (person) => {
-    if (data.onPersonSelect && person.holder && person.holder !== 'Vacant') {
+    // ✅ Enhanced validation: Check for valid holder and position title
+    // Holder must exist, not be empty, and not be 'Vacant'
+    const hasValidHolder = person.holder && person.holder.trim() !== '' && person.holder !== 'Vacant';
+    
+    if (data.onPersonSelect && hasValidHolder && person.name) {
+      console.log('🎯 Position clicked for assessment:', {
+        positionTitle: person.name,
+        holder: person.holder,
+        positionLevel: person.positionLevel,
+        department: person.department
+      });
+      
       data.onPersonSelect({
         name: person.holder,
         positionTitle: person.name,
         positionLevel: person.positionLevel || 'Staff Level',
         department: person.department || data.name
+      });
+    } else {
+      const reason = !person.holder || person.holder.trim() === '' || person.holder === 'Vacant' 
+        ? 'Position is vacant or has no assigned person' 
+        : 'Missing position title';
+      
+      console.warn('⚠️ Cannot generate assessment:', {
+        reason: reason,
+        positionTitle: person.name,
+        holder: person.holder
       });
     }
   };
@@ -361,15 +382,15 @@ const ProgressiveOrgNode = ({ data }) => {
                     marginTop: '4px',
                     backgroundColor: 'rgba(255,255,255,0.2)',
                     borderRadius: '4px',
-                    cursor: position.holder && position.holder !== 'Vacant' ? 'pointer' : 'default',
+                    cursor: (position.holder && position.holder.trim() !== '' && position.holder !== 'Vacant') ? 'pointer' : 'default',
                     border: '1px solid rgba(255,255,255,0.3)',
                     transition: 'all 0.2s ease'
                   }}
                   onClick={() => handlePersonClick(position)}
-                  title={position.holder && position.holder !== 'Vacant' ? 
+                  title={(position.holder && position.holder.trim() !== '' && position.holder !== 'Vacant') ? 
                     `Click to select ${position.holder} for assessment` : 'Position vacant'}
                   onMouseEnter={(e) => {
-                    if (position.holder && position.holder !== 'Vacant') {
+                    if (position.holder && position.holder.trim() !== '' && position.holder !== 'Vacant') {
                       e.target.style.backgroundColor = 'rgba(255,255,255,0.3)';
                       e.target.style.transform = 'scale(1.02)';
                     }
@@ -383,7 +404,7 @@ const ProgressiveOrgNode = ({ data }) => {
                     {position.name.length > 28 ? `${position.name.substring(0, 25)}...` : position.name}
                   </Typography>
                   
-                  {position.holder && position.holder !== 'Vacant' && (
+                  {position.holder && position.holder.trim() !== '' && position.holder !== 'Vacant' && (
                     <Typography 
                       variant="caption" 
                       sx={{ 
@@ -455,6 +476,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   const [selectedResult, setSelectedResult] = useState(null);
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState(new Set()); // Track expanded nodes
+  const [useFilteredView, setUseFilteredView] = useState(true); // Toggle for filtered vs full view
   
   // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -753,10 +775,10 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     }
   }, [hierarchyData]); // Optimized dependencies to prevent infinite re-renders
 
-  // Load organizational hierarchy on component mount
+  // Load organizational hierarchy on component mount and when filter changes
   useEffect(() => {
     loadTopLevelOnly();
-  }, []);
+  }, [useFilteredView]); // Reload when filter toggle changes
 
   // Update nodes whenever hierarchyData changes to ensure fresh function references
   useEffect(() => {
@@ -768,14 +790,18 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     }
   }, [hierarchyData]); // Removed handleNodeExpandCollapse to prevent infinite loop
 
-  // Load ONLY top-level nodes initially - Performance Fix
+  // Load organizational hierarchy - now supports both filtered and full view
   const loadTopLevelOnly = async () => {
     setLoading(true);
     setError(null);
     setHierarchyData(null); // Reset hierarchy data
 
     try {
-      const response = await fetch('/api/flowchart/hierarchy');
+      // Use filtered or full endpoint based on toggle
+      const endpoint = useFilteredView ? '/api/flowchart/filtered-hierarchy' : '/api/flowchart/hierarchy';
+      console.log(`📡 Loading ${useFilteredView ? 'filtered' : 'full'} organizational hierarchy from: ${endpoint}`);
+      
+      const response = await fetch(endpoint);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -788,7 +814,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
         throw new Error(result.error || 'Invalid response from server');
       }
 
-      console.log('📊 Organizational hierarchy loaded:', result);
+      console.log(`📊 ${useFilteredView ? 'Filtered' : 'Full'} organizational hierarchy loaded:`, result);
       
       // Validate the data structure
       if (!result.data.rootNodes || !Array.isArray(result.data.rootNodes)) {
@@ -803,7 +829,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       console.error('❌ Error loading hierarchy:', error);
       
       // Provide user-friendly error messages
-      let userMessage = 'Failed to load organizational chart';
+      let userMessage = `Failed to load ${useFilteredView ? 'filtered' : 'full'} organizational chart`;
       if (error.message.includes('fetch')) {
         userMessage = 'Cannot connect to server. Please ensure the backend server is running on port 3050.';
       } else if (error.message.includes('JSON')) {
@@ -983,7 +1009,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           <Box display="flex" alignItems="center" gap={1}>
             <AccountTreeIcon color="primary" sx={{ fontSize: 28 }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              🚀 Performance-Optimized Organizational Chart
+              🚀 {useFilteredView ? 'Filtered' : 'Full'} Organizational Chart
             </Typography>
             {hierarchyData && (
               <Chip 
@@ -992,9 +1018,37 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
                 size="small"
               />
             )}
+            {hierarchyData?.filterApplied && (
+              <Chip 
+                label="🎯 Specific Hierarchy Path"
+                color="success"
+                size="small"
+                sx={{ fontWeight: 'bold' }}
+              />
+            )}
           </Box>
 
           <Box display="flex" alignItems="center" gap={1}>
+            {/* View Toggle */}
+            <Button
+              onClick={() => setUseFilteredView(!useFilteredView)}
+              variant={useFilteredView ? "contained" : "outlined"}
+              size="small"
+              startIcon={useFilteredView ? <BusinessIcon /> : <AccountTreeIcon />}
+              sx={{
+                backgroundColor: useFilteredView ? '#2e7d32' : 'transparent',
+                color: useFilteredView ? 'white' : '#2e7d32',
+                borderColor: '#2e7d32',
+                '&:hover': {
+                  backgroundColor: useFilteredView ? '#1b5e20' : 'rgba(46, 125, 50, 0.1)',
+                },
+                fontWeight: 'bold'
+              }}
+              title={useFilteredView ? 'Switch to Full Organization Chart' : 'Switch to Filtered Specific Path View'}
+            >
+              {useFilteredView ? 'Filtered View' : 'Full View'}
+            </Button>
+
             {/* Search */}
             <TextField
               size="small"
@@ -1035,17 +1089,20 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
             </Button>
 
             {/* Refresh */}
-            <IconButton onClick={handleRefresh} disabled={loading} title="Reset to Top Level">
+            <IconButton onClick={handleRefresh} disabled={loading} title={`Refresh ${useFilteredView ? 'Filtered' : 'Full'} View`}>
               <RefreshIcon />
             </IconButton>
           </Box>
         </Box>
 
         {/* Performance Info */}
-        <Box sx={{ mt: 1, padding: '8px', backgroundColor: '#e8f5e8', borderRadius: '4px', border: '1px solid #4caf50' }}>
-          <Typography variant="body2" sx={{ fontSize: '12px', color: '#2e7d32' }}>
-            🎯 <strong>Enhanced Layout:</strong> Shows organized hierarchical structure. Click "Expand" to load children with automatic neat positioning. 
-            Click "Organize" to auto-arrange all visible nodes. Handles {hierarchyData?.statistics?.totalOrganizations || 0} organizations efficiently.
+        <Box sx={{ mt: 1, padding: '8px', backgroundColor: useFilteredView ? '#e8f5e8' : '#e3f2fd', borderRadius: '4px', border: useFilteredView ? '1px solid #4caf50' : '1px solid #2196f3' }}>
+          <Typography variant="body2" sx={{ fontSize: '12px', color: useFilteredView ? '#2e7d32' : '#1976d2' }}>
+            {useFilteredView ? (
+              <>🎯 <strong>Filtered View:</strong> Shows specific hierarchy path: PRESIDENT OFFICE → SINARMAS MINING GROUP → PT. BERAU COAL ENERGY → OPERATION DIRECTORATE → XXX - MARINE DIVISION, plus all sub-levels below Level 6. Displaying {hierarchyData?.statistics?.totalOrganizations || 0} organizations in target path.</>
+            ) : (
+              <>🏢 <strong>Full View:</strong> Shows complete organizational structure. Click "Expand" to load children with automatic neat positioning. Click "Organize" to auto-arrange all visible nodes. Handles {hierarchyData?.statistics?.totalOrganizations || 0} organizations efficiently.</>
+            )}
           </Typography>
         </Box>
 
@@ -1198,9 +1255,16 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDetailsDialog(false)}>Close</Button>
-          {selectedResult?.type === 'position' && selectedResult.holder && selectedResult.holder !== 'Vacant' && (
+          {selectedResult?.type === 'position' && selectedResult.holder && selectedResult.holder.trim() !== '' && selectedResult.holder !== 'Vacant' && selectedResult.name && (
             <Button 
               onClick={() => {
+                console.log('🎯 Search result selected for assessment:', {
+                  positionTitle: selectedResult.name,
+                  holder: selectedResult.holder,
+                  positionLevel: selectedResult.level,
+                  department: selectedResult.department
+                });
+                
                 onPersonSelect({
                   name: selectedResult.holder,
                   positionTitle: selectedResult.name,

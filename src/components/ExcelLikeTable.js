@@ -177,90 +177,35 @@ const ExcelLikeTable = () => {
         console.log('Technical Tools data:', assessment.assessments?.['Technical Tools']);
         console.log('Certifications data:', assessment.assessments?.Certifications);
         
-        // Extract data with multiple fallback paths (same as generateAssessmentForNewRow)
+        // 🎯 FIXED: Extract data directly from Gemini API structure (same as generateAssessmentForNewRow)
+        console.log('🔍 Extracting skills data from Gemini API response (original generateAssessment)...');
+        
+        // Extract Hard Skills and Soft Skills from the correct API structure
         const hardSkills = assessment.assessments?.Skills?.hardSkills || [];
         const hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || {};
         const softSkills = assessment.assessments?.Skills?.softSkills || [];
         const softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || {};
         
-        // Fix Safety Training/Certifications extraction - check multiple possible locations
-        const safetyTraining = assessment.requiredCertifications || // Top-level from API
-                             assessment.assessments?.Certifications?.requiredCertifications || 
+        // Extract Safety Training/Certifications from the correct API structure
+        const safetyTraining = assessment.assessments?.Certifications?.requiredCertifications || 
                              assessment.assessments?.['Safety Training']?.requiredCertifications ||
-                             assessment.assessments?.requiredCertifications ||
                              [];
         
-        // Fix Technical Tools extraction - check multiple possible locations
-        const technicalTools = assessment.requiredTools || // Top-level from API
-                              assessment.assessments?.['Technical Tools']?.requiredTools || 
-                              assessment.assessments?.['Technical Tools']?.tools ||
-                              assessment.assessments?.requiredTools ||
-                              // Fallback: Generate tools based on position type when missing from API
-                              (function() {
-                                console.log('🔧 Technical Tools missing from API response, generating fallback based on position:', row.positionTitle);
-                                const positionType = row.positionTitle.toLowerCase();
-                                
-                                // Generate context-appropriate tools for Security & Strategic Director
-                                if (positionType.includes('security') || positionType.includes('strategic') || positionType.includes('director')) {
-                                  return [
-                                    "Sistem Manajemen Keamanan Terpadu (ISMS)",
-                                    "Software Analisis Risiko Keamanan",
-                                    "Platform Intelijen Ancaman (Threat Intelligence)",
-                                    "Sistem Pemantauan CCTV & Kontrol Akses",
-                                    "Software Manajemen Krisis & Insiden",
-                                    "Platform Komunikasi Aman & Enkripsi",
-                                    "Sistem Informasi Geografis (GIS)",
-                                    "Software Pelaporan & Dashboard Keamanan",
-                                    "Platform Manajemen Proyek (MS Project, Jira)",
-                                    "Sistem Audit & Kepatuhan Digital",
-                                    "Software Forensik Digital & Investigasi",
-                                    "Platform Kolaborasi Eksekutif (Teams, Slack)",
-                                    "Sistem Pelacakan Aset & GPS",
-                                    "Software Business Intelligence (Power BI)",
-                                    "Platform Manajemen Vendor & Kontrak"
-                                  ];
-                                }
-                                return [];
-                              })();
+        // Extract Technical Tools from the correct API structure
+        const technicalTools = assessment.assessments?.['Technical Tools']?.requiredTools || [];
+        const technicalToolsRatings = assessment.assessments?.['Technical Tools']?.toolRatings || {};
         
-        const technicalToolsRatings = assessment.toolRatings || // Top-level from API
-                                    assessment.assessments?.['Technical Tools']?.toolRatings || 
-                                    assessment.assessments?.['Technical Tools']?.ratings ||
-                                    assessment.assessments?.toolRatings ||
-                                    // Generate ratings for the fallback tools
-                                    (technicalTools.length > 0 ? technicalTools.reduce((ratings, tool, index) => {
-                                      // Generate appropriate ratings based on tool importance for security director
-                                      const importanceMap = {
-                                        'sistem manajemen keamanan': 9,
-                                        'analisis risiko': 9,
-                                        'intelijen ancaman': 8,
-                                        'cctv': 8,
-                                        'manajemen krisis': 9,
-                                        'komunikasi aman': 8,
-                                        'gis': 7,
-                                        'dashboard': 8,
-                                        'manajemen proyek': 8,
-                                        'audit': 7,
-                                        'forensik': 7,
-                                        'kolaborasi': 7,
-                                        'gps': 7,
-                                        'business intelligence': 8,
-                                        'vendor': 7
-                                      };
-                                      
-                                      const toolLower = tool.toLowerCase();
-                                      let rating = 7; // Default rating
-                                      
-                                      for (const [key, value] of Object.entries(importanceMap)) {
-                                        if (toolLower.includes(key)) {
-                                          rating = value;
-                                          break;
-                                        }
-                                      }
-                                      
-                                      ratings[tool] = rating;
-                                      return ratings;
-                                    }, {}) : {});
+        console.log('✅ Successfully extracted from Gemini API (original function):');
+        console.log('  - Hard Skills Count:', hardSkills.length);
+        console.log('  - Soft Skills Count:', softSkills.length);
+        console.log('  - Safety Training Count:', safetyTraining.length);
+        console.log('  - Technical Tools Count:', technicalTools.length);
+        
+        // If any category is empty, log a warning but don't generate fallback data
+        if (hardSkills.length === 0) console.warn('⚠️ No hard skills received from Gemini API (original function)');
+        if (softSkills.length === 0) console.warn('⚠️ No soft skills received from Gemini API (original function)');
+        if (safetyTraining.length === 0) console.warn('⚠️ No safety training/certifications received from Gemini API (original function)');
+        if (technicalTools.length === 0) console.warn('⚠️ No technical tools received from Gemini API (original function)');
         
         setRows(prev => prev.map(r => 
           r.id === rowId 
@@ -288,6 +233,18 @@ const ExcelLikeTable = () => {
                     hardSkillsRatings: hardSkillsRatings,
                     softSkills: softSkills,
                     softSkillsRatings: softSkillsRatings
+                  },
+                  certifications: {
+                    justification: assessment.assessments?.Certifications?.justification || '',
+                    recommendation: assessment.assessments?.Certifications?.recommendation || ''
+                  },
+                  safetyTraining: {
+                    justification: assessment.assessments?.['Safety Training']?.justification || '',
+                    recommendation: assessment.assessments?.['Safety Training']?.recommendation || ''
+                  },
+                  technicalTools: {
+                    justification: assessment.assessments?.['Technical Tools']?.justification || '',
+                    recommendation: assessment.assessments?.['Technical Tools']?.recommendation || ''
                   }
                 },
                 safetyTraining: safetyTraining,
@@ -339,90 +296,35 @@ const ExcelLikeTable = () => {
         console.log('  - assessments.Certifications:', assessment.assessments?.Certifications);
         console.log('  - assessments.Technical Tools:', assessment.assessments?.['Technical Tools']);
         
-        // Extract data with multiple fallback paths
+        // 🎯 FIXED: Extract data directly from Gemini API structure
+        console.log('🔍 Extracting skills data from Gemini API response...');
+        
+        // Extract Hard Skills and Soft Skills from the correct API structure
         const hardSkills = assessment.assessments?.Skills?.hardSkills || [];
         const hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || {};
         const softSkills = assessment.assessments?.Skills?.softSkills || [];
         const softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || {};
         
-        // Fix Safety Training/Certifications extraction - check multiple possible locations
-        const safetyTraining = assessment.requiredCertifications || // Top-level from API
-                             assessment.assessments?.Certifications?.requiredCertifications || 
+        // Extract Safety Training/Certifications from the correct API structure
+        const safetyTraining = assessment.assessments?.Certifications?.requiredCertifications || 
                              assessment.assessments?.['Safety Training']?.requiredCertifications ||
-                             assessment.assessments?.requiredCertifications ||
                              [];
         
-        // Fix Technical Tools extraction - check multiple possible locations
-        const technicalTools = assessment.requiredTools || // Top-level from API
-                              assessment.assessments?.['Technical Tools']?.requiredTools || 
-                              assessment.assessments?.['Technical Tools']?.tools ||
-                              assessment.assessments?.requiredTools ||
-                              // Fallback: Generate tools based on position type when missing from API
-                              (function() {
-                                console.log('🔧 Technical Tools missing from API response, generating fallback based on position:', positionTitle);
-                                const positionType = positionTitle.toLowerCase();
-                                
-                                // Generate context-appropriate tools for Security & Strategic Director
-                                if (positionType.includes('security') || positionType.includes('strategic') || positionType.includes('director')) {
-                                  return [
-                                    "Sistem Manajemen Keamanan Terpadu (ISMS)",
-                                    "Software Analisis Risiko Keamanan",
-                                    "Platform Intelijen Ancaman (Threat Intelligence)",
-                                    "Sistem Pemantauan CCTV & Kontrol Akses",
-                                    "Software Manajemen Krisis & Insiden",
-                                    "Platform Komunikasi Aman & Enkripsi",
-                                    "Sistem Informasi Geografis (GIS)",
-                                    "Software Pelaporan & Dashboard Keamanan",
-                                    "Platform Manajemen Proyek (MS Project, Jira)",
-                                    "Sistem Audit & Kepatuhan Digital",
-                                    "Software Forensik Digital & Investigasi",
-                                    "Platform Kolaborasi Eksekutif (Teams, Slack)",
-                                    "Sistem Pelacakan Aset & GPS",
-                                    "Software Business Intelligence (Power BI)",
-                                    "Platform Manajemen Vendor & Kontrak"
-                                  ];
-                                }
-                                return [];
-                              })();
+        // Extract Technical Tools from the correct API structure
+        const technicalTools = assessment.assessments?.['Technical Tools']?.requiredTools || [];
+        const technicalToolsRatings = assessment.assessments?.['Technical Tools']?.toolRatings || {};
         
-        const technicalToolsRatings = assessment.toolRatings || // Top-level from API
-                                    assessment.assessments?.['Technical Tools']?.toolRatings || 
-                                    assessment.assessments?.['Technical Tools']?.ratings ||
-                                    assessment.assessments?.toolRatings ||
-                                    // Generate ratings for the fallback tools
-                                    (technicalTools.length > 0 ? technicalTools.reduce((ratings, tool, index) => {
-                                      // Generate appropriate ratings based on tool importance for security director
-                                      const importanceMap = {
-                                        'sistem manajemen keamanan': 9,
-                                        'analisis risiko': 9,
-                                        'intelijen ancaman': 8,
-                                        'cctv': 8,
-                                        'manajemen krisis': 9,
-                                        'komunikasi aman': 8,
-                                        'gis': 7,
-                                        'dashboard': 8,
-                                        'manajemen proyek': 8,
-                                        'audit': 7,
-                                        'forensik': 7,
-                                        'kolaborasi': 7,
-                                        'gps': 7,
-                                        'business intelligence': 8,
-                                        'vendor': 7
-                                      };
-                                      
-                                      const toolLower = tool.toLowerCase();
-                                      let rating = 7; // Default rating
-                                      
-                                      for (const [key, value] of Object.entries(importanceMap)) {
-                                        if (toolLower.includes(key)) {
-                                          rating = value;
-                                          break;
-                                        }
-                                      }
-                                      
-                                      ratings[tool] = rating;
-                                      return ratings;
-                                    }, {}) : {});
+        console.log('✅ Successfully extracted from Gemini API:');
+        console.log('  - Hard Skills Count:', hardSkills.length);
+        console.log('  - Soft Skills Count:', softSkills.length);
+        console.log('  - Safety Training Count:', safetyTraining.length);
+        console.log('  - Technical Tools Count:', technicalTools.length);
+        
+        // If any category is empty, log a warning but don't generate fallback data
+        if (hardSkills.length === 0) console.warn('⚠️ No hard skills received from Gemini API');
+        if (softSkills.length === 0) console.warn('⚠️ No soft skills received from Gemini API');
+        if (safetyTraining.length === 0) console.warn('⚠️ No safety training/certifications received from Gemini API');
+        if (technicalTools.length === 0) console.warn('⚠️ No technical tools received from Gemini API');
 
         console.log('📊 Extracted data for mapping:');
         console.log('  - hardSkills:', hardSkills);
@@ -459,6 +361,18 @@ const ExcelLikeTable = () => {
                     hardSkillsRatings: hardSkillsRatings,
                     softSkills: softSkills,
                     softSkillsRatings: softSkillsRatings
+                  },
+                  certifications: {
+                    justification: assessment.assessments?.Certifications?.justification || '',
+                    recommendation: assessment.assessments?.Certifications?.recommendation || ''
+                  },
+                  safetyTraining: {
+                    justification: assessment.assessments?.['Safety Training']?.justification || '',
+                    recommendation: assessment.assessments?.['Safety Training']?.recommendation || ''
+                  },
+                  technicalTools: {
+                    justification: assessment.assessments?.['Technical Tools']?.justification || '',
+                    recommendation: assessment.assessments?.['Technical Tools']?.recommendation || ''
                   }
                 },
                 safetyTraining: safetyTraining,

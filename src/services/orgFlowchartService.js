@@ -48,7 +48,7 @@ class OrganizationalFlowchartService {
         SELECT 
           id, object_description, object_abbr, object_type, object_id, 
           status_object, parent_relationship_obj_id, parent_relationship_obj_text,
-          relationship_text, rel_obj_text_sup, cost_center_text, vacant_status,
+          relationship_text, relationship_obj_text, rel_obj_text_sup, cost_center_text, vacant_status,
           created_at, updated_at
         FROM organizational_units
         WHERE object_id IS NOT NULL 
@@ -133,10 +133,17 @@ class OrganizationalFlowchartService {
           if (!positionsByParent.has(parentId)) {
             positionsByParent.set(parentId, []);
           }
+          
+          // ✅ FIX: Use relationship_obj_text for staff names, leave blank if null
+          // relationship_obj_text contains actual person names for position records
+          const actualHolder = record.relationship_obj_text && record.relationship_obj_text.trim() !== '' 
+            ? record.relationship_obj_text.trim()
+            : ''; // Leave blank if null/empty
+            
           positionsByParent.get(parentId).push({
             ...cleanRecord,
             nodeType: 'position',
-            holder: record.rel_obj_text_sup || record.parent_relationship_obj_text || 'Vacant',
+            holder: actualHolder,
             positionLevel: this.extractPositionLevel(record),
             department: record.cost_center_text || 'Unknown Department'
           });
@@ -240,7 +247,7 @@ class OrganizationalFlowchartService {
           parentId: position.parentId,
           level: (parentOrg.level || 0) + 1,
           nodeType: 'position',
-          holder: position.manager || position.rel_obj_text_sup || 'Vacant',
+          holder: position.relationship_obj_text && position.relationship_obj_text.trim() !== '' ? position.relationship_obj_text.trim() : '',
           positionLevel: this.extractPositionLevel(position),
           department: position.costCenter || 'Unknown Department',
           children: [], // Positions can also have children (sub-positions)
@@ -290,6 +297,7 @@ class OrganizationalFlowchartService {
       parentId: record.parent_relationship_obj_id || null,
       manager: record.parent_relationship_obj_text || '',
       relationshipText: record.relationship_text || '',
+      relationshipObjText: record.relationship_obj_text || '', // ✅ Added for staff names
       costCenter: record.cost_center_text || '',
       vacant: record.vacant_status === 'Yes' || record.vacant_status === 'Vacant',
       createdAt: record.created_at,
@@ -551,6 +559,201 @@ class OrganizationalFlowchartService {
         searchedAt: new Date().toISOString()
       }
     };
+  }
+
+  /**
+   * Get filtered organizational hierarchy showing only the specific path:
+   * Level 1: PRESIDENT OFFICE → Level 2: SINARMAS MINING GROUP → 
+   * Level 3: BERAU COAL ENERGY GROUP → Level 4: PT. BERAU COAL ENERGY → 
+   * Level 5: OPERATION DIRECTORATE → Level 6: XXX - MARINE DIVISION
+   * Plus all children below Level 6
+   * @returns {Object} Filtered organizational hierarchy
+   */
+  async getFilteredOrganizationalHierarchy() {
+    console.log('🎯 Building filtered organizational flowchart for specific hierarchy path...');
+
+    try {
+      // Get the full hierarchy first
+      const fullHierarchy = await this.getOrganizationalHierarchy();
+      if (!fullHierarchy.success) {
+        throw new Error('Failed to get full hierarchy');
+      }
+
+      // Define the target organizational path with actual IDs from database
+      const targetPath = [
+        { id: '60020523', name: 'PRESIDENT OFFICE', level: 0 },
+        { id: '60032963', name: 'SINARMAS MINING GROUP', level: 1 },
+        // Note: BERAU COAL ENERGY GROUP might be represented as PT. BERAU COAL ENERGY in the data
+        { id: '60005084', name: 'PT. BERAU COAL ENERGY', level: 2 },
+        { id: '60005199', name: 'OPERATION DIRECTORATE', level: 3 },
+        { id: '60005200', name: 'XXX - MARINE DIVISION - BCE', level: 4 }
+      ];
+
+      console.log('🔍 Target path:', targetPath);
+
+      // Build the filtered hierarchy following the specific path
+      const filteredHierarchy = this.buildFilteredHierarchy(fullHierarchy.data.rootNodes, targetPath);
+
+      const statistics = this.calculateStatistics(filteredHierarchy.rootNodes);
+
+      console.log(`✅ Filtered hierarchy built with ${filteredHierarchy.rootNodes.length} root nodes following the specific path`);
+
+      return {
+        success: true,
+        data: {
+          rootNodes: filteredHierarchy.rootNodes,
+          statistics: statistics,
+          filterApplied: true,
+          targetPath: targetPath,
+          metadata: {
+            totalOrganizations: statistics.totalOrganizations,
+            totalPositions: statistics.totalPositions,
+            maxDepth: statistics.maxDepth,
+            processedAt: new Date().toISOString(),
+            filterType: 'specific-hierarchy-path'
+          }
+        },
+        metadata: {
+          filterApplied: true,
+          targetPathLength: targetPath.length,
+          filteredNodes: statistics.totalOrganizations,
+          processedAt: new Date().toISOString()
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ Error building filtered organizational flowchart:', error);
+      throw new Error(`Failed to build filtered organizational flowchart: ${error.message}`);
+    }
+  }
+
+  /**
+   * Build filtered hierarchy following the specific organizational path
+   * @param {Array} rootNodes - Full hierarchy root nodes
+   * @param {Array} targetPath - Target organizational path to follow
+   * @returns {Object} Filtered hierarchy structure
+   */
+  buildFilteredHierarchy(rootNodes, targetPath) {
+    console.log('🔧 Building filtered hierarchy structure...');
+
+    const filteredRootNodes = [];
+
+    // Helper function to find a node by ID in the hierarchy
+    const findNodeById = (nodes, targetId) => {
+      for (const node of nodes) {
+        if (node.objectId === targetId) {
+          return node;
+        }
+        if (node.children && node.children.length > 0) {
+          const found = findNodeById(node.children, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    // Helper function to deep clone a node without children
+    const cloneNodeWithoutChildren = (node) => {
+      return {
+        ...node,
+        children: [],
+        positions: node.positions ? [...node.positions] : []
+      };
+    };
+
+    // Helper function to include ALL children below a certain level
+    const includeAllChildrenBelow = (node, currentLevel, includeFromLevel) => {
+      const clonedNode = cloneNodeWithoutChildren(node);
+      clonedNode.level = currentLevel;
+
+      if (node.children && node.children.length > 0) {
+        if (currentLevel >= includeFromLevel) {
+          // Include ALL children and their descendants
+          clonedNode.children = node.children.map(child => 
+            includeAllChildrenBelow(child, currentLevel + 1, includeFromLevel)
+          );
+        } else {
+          // We're still following the specific path, don't include all children yet
+          clonedNode.children = [];
+        }
+      }
+
+      console.log(`📋 ${currentLevel >= includeFromLevel ? 'Including all children' : 'Following path'} for level ${currentLevel}: ${clonedNode.name}`);
+      return clonedNode;
+    };
+
+    // Start with the first node in target path (PRESIDENT OFFICE)
+    const presidendOffice = findNodeById(rootNodes, targetPath[0].id);
+    if (!presidendOffice) {
+      console.warn(`⚠️ PRESIDENT OFFICE not found (ID: ${targetPath[0].id})`);
+      return { rootNodes: [] };
+    }
+
+    // Create the filtered root node
+    const filteredPresidentOffice = cloneNodeWithoutChildren(presidendOffice);
+    filteredPresidentOffice.level = 0;
+
+    // Follow the target path step by step
+    let currentNode = filteredPresidentOffice;
+    let currentSourceNode = presidendOffice;
+
+    for (let pathIndex = 1; pathIndex < targetPath.length; pathIndex++) {
+      const targetStep = targetPath[pathIndex];
+      
+      console.log(`🎯 Looking for path step ${pathIndex}: ${targetStep.name} (ID: ${targetStep.id})`);
+      
+      // Find the target child in the current source node
+      const targetChild = currentSourceNode.children ? 
+        currentSourceNode.children.find(child => child.objectId === targetStep.id) : null;
+      
+      if (!targetChild) {
+        console.warn(`⚠️ Target child not found in path: ${targetStep.name} (ID: ${targetStep.id})`);
+        // Try to find it anywhere in the hierarchy
+        const foundAnywhere = findNodeById(rootNodes, targetStep.id);
+        if (foundAnywhere) {
+          console.log(`🔍 Found ${targetStep.name} elsewhere in hierarchy, adding to current level`);
+          const clonedChild = cloneNodeWithoutChildren(foundAnywhere);
+          clonedChild.level = pathIndex;
+          currentNode.children.push(clonedChild);
+          currentNode = clonedChild;
+          currentSourceNode = foundAnywhere;
+        } else {
+          console.warn(`❌ ${targetStep.name} not found anywhere in hierarchy`);
+          break;
+        }
+        continue;
+      }
+
+      // Create the child node following the path
+      let clonedChild;
+      
+      if (pathIndex >= 4) { // Level 5 and below (XXX - MARINE DIVISION is level 4, so include all from level 4)
+        // Include ALL children and descendants from this level onwards
+        clonedChild = includeAllChildrenBelow(targetChild, pathIndex, pathIndex);
+        console.log(`📊 Including all children from level ${pathIndex} onwards for ${targetStep.name}`);
+      } else {
+        // Still following the specific path
+        clonedChild = cloneNodeWithoutChildren(targetChild);
+        clonedChild.level = pathIndex;
+        console.log(`➡️ Following path to level ${pathIndex}: ${targetStep.name}`);
+      }
+
+      currentNode.children.push(clonedChild);
+      currentNode = clonedChild;
+      currentSourceNode = targetChild;
+    }
+
+    // If we reached the XXX - MARINE DIVISION level, include ALL its children and descendants
+    if (currentSourceNode && currentSourceNode.children && currentSourceNode.children.length > 0) {
+      console.log(`🌳 Adding ALL children and descendants below ${currentSourceNode.name}`);
+      currentNode.children = currentSourceNode.children.map(child => 
+        includeAllChildrenBelow(child, (currentNode.level || 0) + 1, 0) // Include all from level 0 (which means include everything)
+      );
+    }
+
+    filteredRootNodes.push(filteredPresidentOffice);
+
+    return { rootNodes: filteredRootNodes };
   }
 
   /**

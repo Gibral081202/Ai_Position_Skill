@@ -758,6 +758,48 @@ app.get('/api/flowchart/search', async (req, res) => {
 });
 
 /**
+ * GET /api/flowchart/filtered-hierarchy
+ * Returns filtered organizational hierarchy showing only specific path:
+ * Level 1: PRESIDENT OFFICE → Level 2: SINARMAS MINING GROUP → 
+ * Level 3: BERAU COAL ENERGY GROUP → Level 4: PT. BERAU COAL ENERGY → 
+ * Level 5: OPERATION DIRECTORATE → Level 6: XXX - MARINE DIVISION
+ * Plus all children below Level 6
+ */
+app.get('/api/flowchart/filtered-hierarchy', async (req, res) => {
+  console.log('🎯 Received request for filtered organizational flowchart hierarchy');
+  
+  try {
+    const flowchartService = new OrganizationalFlowchartService();
+    const result = await flowchartService.getFilteredOrganizationalHierarchy();
+    
+    if (!result.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to build filtered organizational hierarchy',
+        details: result.error
+      });
+    }
+    
+    console.log(`✅ Successfully returned filtered organizational flowchart with ${result.metadata.filteredNodes} organizations following specific hierarchy path`);
+    
+    res.json({
+      success: true,
+      data: result.data,
+      metadata: result.metadata,
+      message: `Filtered organizational flowchart loaded following specific hierarchy path (${result.metadata.targetPathLength} levels)`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting filtered organizational flowchart hierarchy:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get filtered organizational flowchart hierarchy',
+      details: error.message
+    });
+  }
+});
+
+/**
  * POST /api/flowchart/refresh
  * Force refresh of organizational flowchart cache
  */

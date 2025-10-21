@@ -16,6 +16,7 @@
     "deploy:server": "git pull && npm install && npm run build && pm2 restart HRAI-Mining-HR"
   },
   "dependencies": {
+    "@balkangraph/orgchart.js": "^8.21.16",
     "@emotion/react": "^11.11.0",
     "@emotion/styled": "^11.11.0",
     "@mui/icons-material": "^5.14.0",

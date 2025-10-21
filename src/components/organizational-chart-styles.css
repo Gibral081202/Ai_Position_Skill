@@ -1,0 +1,107 @@
+/* Clean Organizational Chart Connecting Lines Styles */
+
+/* ReactFlow Edge Enhancements */
+.react-flow__edge {
+  pointer-events: all;
+  transition: opacity 0.2s ease;
+}
+
+.react-flow__edge:hover {
+  opacity: 1 !important;
+}
+
+.react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* FIXED: Clean, consistent edge styling */
+.react-flow__edge.react-flow__edge-straight .react-flow__edge-path {
+  stroke-width: 2px;
+  stroke: #1976d2;
+}
+
+.react-flow__edge.react-flow__edge-smoothstep .react-flow__edge-path {
+  stroke-width: 2px;
+  stroke: #1976d2;
+}
+
+/* Simplified Edge Labels - Remove complex styling */
+.react-flow__edge-text {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 10px;
+  fill: #1976d2;
+  pointer-events: none;
+}
+
+.react-flow__edge-textbg {
+  fill: rgba(255, 255, 255, 0.9);
+  stroke: none;
+}
+
+/* REMOVED: Complex animations that cause visual conflicts */
+
+/* Clean Arrow Markers */
+.react-flow__arrowhead {
+  fill: #1976d2;
+}
+
+/* Background Grid Enhancement */
+.react-flow__background {
+  opacity: 0.4;
+}
+
+/* Node Connection Points */
+.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border: 3px solid #fff;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.2));
+  transition: all 0.2s ease;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.2);
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+/* Enhanced Controls */
+.react-flow__controls {
+  background: rgba(255,255,255,0.95);
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.react-flow__controls-button {
+  border: none;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.react-flow__controls-button:hover {
+  background: rgba(25, 118, 210, 0.1);
+  transform: scale(1.05);
+}
+
+/* MiniMap Enhancement */
+.react-flow__minimap {
+  background: rgba(255,255,255,0.95);
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Simplified Consistent Colors */
+.react-flow__edge .react-flow__edge-path {
+  stroke: #1976d2 !important;
+  stroke-width: 2px !important;
+}
+
+/* Ensure all connecting lines use same color */
+.react-flow__connection .react-flow__connection-path {
+  stroke: #1976d2;
+  stroke-width: 2px;
+}

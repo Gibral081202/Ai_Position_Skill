@@ -9,7 +9,7 @@
  * - Performance optimized for large datasets (20,901+ records)
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -49,6 +49,7 @@ import ReactFlow, {
   MiniMap
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import './organizational-chart-styles.css';
 
 // Progressive Organization Node Component - Shows positions always (no toggle)
 const ProgressiveOrgNode = ({ data }) => {
@@ -465,6 +466,11 @@ const nodeTypes = {
   progressiveOrg: ProgressiveOrgNode,
 };
 
+// Enhanced edge types for professional organizational chart visualization
+const edgeTypes = {
+  // Add any custom edge types here if needed in the future
+};
+
 // Main Progressive Organizational Flowchart Component
 const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   const [hierarchyData, setHierarchyData] = useState(null);
@@ -476,13 +482,31 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   const [selectedResult, setSelectedResult] = useState(null);
   const [detailsDialog, setDetailsDialog] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState(new Set()); // Track expanded nodes
-  const [useFilteredView, setUseFilteredView] = useState(true); // Toggle for filtered vs full view
+  const [viewportState, setViewportState] = useState({ x: 0, y: 0, zoom: 1 }); // Preserve viewport
+  
+  // Accordion behavior state - track which node is actively expanded per level
+  const [accordionState, setAccordionState] = useState(new Map()); // Map of level -> activeNodeId
+  const [hiddenSiblings, setHiddenSiblings] = useState(new Set()); // Track nodes hidden by accordion behavior
+  
+  // Always use full view - no more filtering
+  const useFilteredView = false;
+  
+  // Use ref to ensure hierarchy data is always accessible
+  const hierarchyDataRef = useRef(null);
   
   // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  // Helper function: Perfect alignment layout for professional appearance matching the image
+  // FIXED: Consistent spacing constants for clean layout
+  const LAYOUT_CONSTANTS = {
+    NODE_WIDTH: 320,
+    NODE_HEIGHT: 180,
+    HORIZONTAL_GAP: 80,
+    VERTICAL_GAP: 200
+  };
+
+  // Helper function: Clean, predictable layout with consistent spacing
   const autoOrganizeLayout = (nodes, edges) => {
     const organizedNodes = [...nodes];
     const levelGroups = {};
@@ -496,57 +520,89 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       levelGroups[level].push(node);
     });
     
-    // Perfect alignment for each level to match the image layout
+    // FIXED: Predictable positioning with consistent spacing
     Object.keys(levelGroups).forEach(level => {
       const levelNodes = levelGroups[level];
       const levelNum = parseInt(level);
       
-      // Perfect vertical positioning to match image
-      let y;
-      if (levelNum === 0) {
-        y = 0; // PRESIDENT OFFICE at top center
-      } else if (levelNum === 1) {
-        y = 280; // Level 2 with optimal spacing as shown in image
-      } else {
-        y = 280 + (levelNum - 1) * 300; // Deeper levels with consistent spacing
-      }
-      
-      // Perfect horizontal alignment matching the image layout
-      const nodeWidth = 280;
-      const horizontalGap = 40; // Tighter gap as seen in image
+      // FIXED: Simple, predictable Y positioning
+      const y = levelNum * LAYOUT_CONSTANTS.VERTICAL_GAP;
       
       if (levelNum === 0) {
-        // PRESIDENT OFFICE: Center exactly at x=0
+        // Root node centered
         levelNodes.forEach(node => {
           node.position = { x: 0, y };
         });
       } else {
-        // All other levels: Perfect horizontal distribution
-        const totalWidth = (levelNodes.length * nodeWidth) + ((levelNodes.length - 1) * horizontalGap);
-        const startX = -(totalWidth / 2) + (nodeWidth / 2);
+        // FIXED: Better horizontal distribution with consistent gaps
+        const totalWidth = (levelNodes.length * LAYOUT_CONSTANTS.NODE_WIDTH) + 
+                          ((levelNodes.length - 1) * LAYOUT_CONSTANTS.HORIZONTAL_GAP);
+        const startX = -(totalWidth / 2) + (LAYOUT_CONSTANTS.NODE_WIDTH / 2);
         
         levelNodes.forEach((node, index) => {
-          const x = startX + (index * (nodeWidth + horizontalGap));
+          const x = startX + (index * (LAYOUT_CONSTANTS.NODE_WIDTH + LAYOUT_CONSTANTS.HORIZONTAL_GAP));
           node.position = { x, y };
         });
       }
     });
     
-    console.log(`✅ Auto-organized ${organizedNodes.length} nodes in image-perfect alignment`);
+    console.log(`✅ Organized ${organizedNodes.length} nodes with consistent spacing`);
     return organizedNodes;
   };
 
-  // Helper function: Get hierarchical edge color based on level
-  const getHierarchicalEdgeColor = (level) => {
-    const colors = [
-      '#1976d2', // Level 0: Blue
-      '#388e3c', // Level 1: Green  
-      '#f57c00', // Level 2: Orange
-      '#7b1fa2', // Level 3: Purple
-      '#d32f2f', // Level 4: Red
-      '#455a64'  // Level 5+: Blue Grey
+  // Helper function: Get enhanced hierarchical edge styling based on level
+  const getHierarchicalEdgeStyle = (level) => {
+    const styles = [
+      { 
+        color: '#0d47a1', // Level 0: Deep Blue
+        width: 4,
+        type: 'straight',
+        animated: false,
+        dashArray: undefined,
+        opacity: 1.0
+      },
+      { 
+        color: '#1b5e20', // Level 1: Deep Green
+        width: 3.5,
+        type: 'smoothstep',
+        animated: false,
+        dashArray: undefined,
+        opacity: 0.95
+      },
+      { 
+        color: '#e65100', // Level 2: Deep Orange
+        width: 3,
+        type: 'smoothstep',
+        animated: false,
+        dashArray: undefined,
+        opacity: 0.9
+      },
+      { 
+        color: '#4a148c', // Level 3: Deep Purple
+        width: 2.5,
+        type: 'smoothstep',
+        animated: false,
+        dashArray: '8,4',
+        opacity: 0.85
+      },
+      { 
+        color: '#b71c1c', // Level 4: Deep Red
+        width: 2,
+        type: 'smoothstep',
+        animated: true,
+        dashArray: '6,3',
+        opacity: 0.8
+      },
+      { 
+        color: '#263238', // Level 5+: Dark Blue Grey
+        width: 1.5,
+        type: 'smoothstep',
+        animated: true,
+        dashArray: '4,2',
+        opacity: 0.75
+      }
     ];
-    return colors[Math.min(level, colors.length - 1)];
+    return styles[Math.min(level, styles.length - 1)];
   };
 
   // Helper function: Find node in hierarchy data
@@ -572,48 +628,26 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       
       const newNodes = [];
       
-      // Enhanced hierarchical layout matching the image's neat organization
+      // FIXED: Simple, predictable child positioning
       const parentLevel = parentNode.data.level || 0;
       const parentX = parentNode.position.x;
       const parentY = parentNode.position.y;
       
-      // Grid layout configuration for neat positioning (image-perfect)
-      const nodeWidth = 280;
-      const nodeHeight = 200;
-      const horizontalGap = 40; // Tighter gap as seen in image
-      const verticalGap = 90; // Optimal vertical spacing
-      
-      // Calculate optimal grid layout for professional appearance
-      const childrenCount = children.length;
-      let columns = Math.ceil(Math.sqrt(childrenCount));
-      let rows = Math.ceil(childrenCount / columns);
-      
-      // For better visual balance, prefer wider layouts (image style)
-      if (childrenCount > 4) {
-        columns = Math.min(Math.ceil(childrenCount / 2), 6); // Max 6 columns
-        rows = Math.ceil(childrenCount / columns);
-      }
-      
-      const totalWidth = (columns * nodeWidth) + ((columns - 1) * horizontalGap);
-      const totalHeight = (rows * nodeHeight) + ((rows - 1) * verticalGap);
-      const startX = parentX - (totalWidth / 2);
-      const startY = parentY + 280; // Consistent spacing matching image layout
+      // Use consistent spacing constants
+      const totalWidth = (children.length * LAYOUT_CONSTANTS.NODE_WIDTH) + 
+                        ((children.length - 1) * LAYOUT_CONSTANTS.HORIZONTAL_GAP);
+      const startX = parentX - (totalWidth / 2) + (LAYOUT_CONSTANTS.NODE_WIDTH / 2);
+      const childY = parentY + LAYOUT_CONSTANTS.VERTICAL_GAP;
 
       children.forEach((child, index) => {
         const childId = `child-${child.objectId}`;
+        const x = startX + (index * (LAYOUT_CONSTANTS.NODE_WIDTH + LAYOUT_CONSTANTS.HORIZONTAL_GAP));
         
-        // Calculate grid position for neat organization
-        const row = Math.floor(index / columns);
-        const col = index % columns;
-        
-        const x = startX + (col * (nodeWidth + horizontalGap)) + (nodeWidth / 2);
-        const y = startY + (row * (nodeHeight + verticalGap));
-        
-        // Create child node with proper object type preservation
+        // Create child node with consistent positioning
         newNodes.push({
           id: childId,
           type: 'progressiveOrg',
-          position: { x, y },
+          position: { x, y: childY },
           data: {
             ...child,
             nodeType: child.objectType === 'S' ? 'position' : 'organization',
@@ -627,11 +661,10 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
         });
       });
       
-      console.log(`✅ Added ${newNodes.length} children in image-perfect layout for node ${parentNodeId}`);
-      const allNodes = [...prevNodes, ...newNodes];
+      console.log(`✅ Added ${newNodes.length} children with consistent positioning for node ${parentNodeId}`);
       
-      // Auto-organize the layout for image-perfect appearance
-      return autoOrganizeLayout(allNodes, []);
+      // FIXED: Don't reorganize all nodes - just return with new children
+      return [...prevNodes, ...newNodes];
     });
 
     // Add edges with proper hierarchical connections
@@ -647,42 +680,23 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           children.forEach((child) => {
             const childId = `child-${child.objectId}`;
             
-            // Create hierarchical edge with enhanced styling for neat lines
-            const parentLevel = parentNodeFromCurrent.data.level || 0;
-            const edgeColor = getHierarchicalEdgeColor(parentLevel);
-            
-            // Enhanced edge styling for cleaner hierarchy lines
+            // FIXED: Simple, clean edge creation
             newEdges.push({
               id: `edge-${parentNodeFromCurrent.id}-${childId}`,
               source: parentNodeFromCurrent.id,
               target: childId,
-              type: 'smoothstep', // Smooth curved lines
+              type: 'straight',
               animated: false,
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                width: 10,
-                height: 10,
-                color: edgeColor,
+                width: 8,
+                height: 8,
+                color: '#1976d2'
               },
               style: {
-                strokeWidth: Math.max(3 - parentLevel * 0.5, 1.5), // Gradually thinner for deeper levels
-                stroke: edgeColor,
-                strokeDasharray: parentLevel > 3 ? '8,4' : undefined, // Dashed for very deep levels
+                strokeWidth: 2,
+                stroke: '#1976d2',
                 opacity: 0.8
-              },
-              labelStyle: { 
-                fontSize: '9px', 
-                fill: edgeColor, 
-                fontWeight: 'bold',
-                backgroundColor: 'rgba(255,255,255,0.9)',
-                padding: '2px 4px',
-                borderRadius: '4px'
-              },
-              labelBgStyle: { 
-                fill: 'rgba(255,255,255,0.9)', 
-                fillOpacity: 0.9,
-                rx: 4,
-                ry: 4
               }
             });
           });
@@ -695,24 +709,110 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     }, 100); // Small delay to ensure nodes are added first
   };
 
+  // Helper function: Get all sibling nodes at the same level with the same parent
+  const getSiblingNodes = useCallback((targetNodeId, currentNodes, hierarchyData) => {
+    const targetNode = currentNodes.find(node => node.data.objectId === targetNodeId);
+    if (!targetNode) return [];
 
+    const targetLevel = targetNode.data.level;
+    const targetParentId = targetNode.data.parentNodeId;
+
+    return currentNodes.filter(node => 
+      node.data.level === targetLevel && 
+      node.data.parentNodeId === targetParentId &&
+      node.data.objectId !== targetNodeId
+    );
+  }, []);
+
+  // Helper function: Apply accordion behavior - hide siblings when expanding
+  const applyAccordionBehavior = useCallback((expandingNodeId, shouldExpand) => {
+    setNodes(prevNodes => {
+      const expandingNode = prevNodes.find(node => node.data.objectId === expandingNodeId);
+      if (!expandingNode) return prevNodes;
+
+      const level = expandingNode.data.level;
+      
+      // Don't apply accordion behavior to Level 0 (PRESIDENT OFFICE) - it should always be visible
+      if (level === 0) {
+        console.log(`🎵 Accordion: Skipping Level 0 node (${expandingNode.data.name}) - always visible`);
+        return prevNodes;
+      }
+
+      const siblings = getSiblingNodes(expandingNodeId, prevNodes, hierarchyDataRef.current);
+
+      if (shouldExpand) {
+        // Hide all siblings when expanding this node
+        const siblingIds = siblings.map(sibling => sibling.data.objectId);
+        
+        setHiddenSiblings(prev => {
+          const newSet = new Set(prev);
+          siblingIds.forEach(id => newSet.add(id));
+          return newSet;
+        });
+
+        setAccordionState(prev => {
+          const newMap = new Map(prev);
+          newMap.set(level, expandingNodeId);
+          return newMap;
+        });
+
+        console.log(`🎵 Accordion: Expanding ${expandingNode.data.name}, hiding ${siblingIds.length} siblings at level ${level}`);
+      } else {
+        // Show all siblings when collapsing this node
+        const siblingIds = siblings.map(sibling => sibling.data.objectId);
+        
+        setHiddenSiblings(prev => {
+          const newSet = new Set(prev);
+          siblingIds.forEach(id => newSet.delete(id));
+          return newSet;
+        });
+
+        setAccordionState(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(level);
+          return newMap;
+        });
+
+        console.log(`🎵 Accordion: Collapsing ${expandingNode.data.name}, showing ${siblingIds.length} siblings at level ${level}`);
+      }
+
+      return prevNodes;
+    });
+  }, [getSiblingNodes]);
 
   // Handle expand/collapse of individual nodes - Load children on demand
   const handleNodeExpandCollapse = useCallback(async (nodeId, shouldExpand) => {
     console.log(`🔄 ${shouldExpand ? 'Expanding' : 'Collapsing'} node: ${nodeId}`);
     
-    // Check if hierarchy data is available
-    if (!hierarchyData || !hierarchyData.rootNodes) {
+    // Check if hierarchy data is available (use state first, then ref as fallback)
+    let currentHierarchyData = hierarchyData || hierarchyDataRef.current;
+    
+    if (!currentHierarchyData || !currentHierarchyData.rootNodes) {
       console.error('❌ Hierarchy data not available for node expansion');
       console.log('🔍 Current hierarchyData:', hierarchyData);
-      setError('Organizational data not loaded. Please refresh the page.');
-      return;
+      console.log('🔍 Ref hierarchyData:', hierarchyDataRef.current);
+      
+      // Try to reload data if it's missing
+      console.log('🔧 Attempting to reload hierarchy data...');
+      try {
+        await loadTopLevelOnly();
+        // After reload, use the most current data
+        currentHierarchyData = hierarchyDataRef.current || hierarchyData;
+        if (!currentHierarchyData || !currentHierarchyData.rootNodes) {
+          setError('Failed to load organizational data. Please refresh the page.');
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to reload hierarchy data:', error);
+        setError('Organizational data not loaded. Please refresh the page.');
+        return;
+      }
     }
     
     try {
       if (shouldExpand) {
         // Load children for this specific node from the hierarchy
-        const nodeData = findNodeInHierarchy(hierarchyData.rootNodes, nodeId);
+        const nodeData = findNodeInHierarchy(currentHierarchyData.rootNodes, nodeId);
         if (nodeData && nodeData.children && nodeData.children.length > 0) {
           addChildrenToFlowchart(nodeId, nodeData.children);
           setExpandedNodes(prev => new Set(prev.add(nodeId)));
@@ -760,6 +860,9 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
         });
       }
 
+      // Apply accordion behavior - hide/show siblings based on expand/collapse
+      applyAccordionBehavior(nodeId, shouldExpand);
+
       // Update parent node's expanded state
       setNodes(prevNodes => 
         prevNodes.map(node => 
@@ -773,33 +876,41 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       console.error('Error expanding/collapsing node:', error);
       setError(`Failed to ${shouldExpand ? 'expand' : 'collapse'} node: ${error.message}`);
     }
-  }, [hierarchyData]); // Optimized dependencies to prevent infinite re-renders
+  }, []); // No dependencies needed since we use ref for hierarchy data
 
-  // Load organizational hierarchy on component mount and when filter changes
+  // Initial load on component mount only - always load full hierarchy
   useEffect(() => {
-    loadTopLevelOnly();
-  }, [useFilteredView]); // Reload when filter toggle changes
-
-  // Update nodes whenever hierarchyData changes to ensure fresh function references
-  useEffect(() => {
-    if (hierarchyData && hierarchyData.rootNodes && hierarchyData.rootNodes.length > 0) {
-      console.log('🔄 Updating nodes with fresh function references');
-      const { nodes: flowNodes, edges: flowEdges } = convertRootNodesToFlowChart(hierarchyData.rootNodes);
-      setNodes(flowNodes);
-      setEdges(flowEdges);
+    if (!hierarchyData) {
+      loadTopLevelOnly();
     }
-  }, [hierarchyData]); // Removed handleNodeExpandCollapse to prevent infinite loop
+  }, []); // Only run once on mount
+
+  // Sync ref with state and update nodes only when needed
+  useEffect(() => {
+    if (hierarchyData) {
+      hierarchyDataRef.current = hierarchyData; // Keep ref in sync
+      
+      // Only convert to nodes if we don't have nodes yet
+      if (hierarchyData.rootNodes && hierarchyData.rootNodes.length > 0 && nodes.length === 0) {
+        console.log('🔄 Initial setup - converting hierarchy to nodes');
+        const { nodes: flowNodes, edges: flowEdges } = convertRootNodesToFlowChart(hierarchyData.rootNodes);
+        setNodes(flowNodes);
+        setEdges(flowEdges);
+      }
+    }
+  }, [hierarchyData]); // Run when hierarchyData changes to keep ref in sync
 
   // Load organizational hierarchy - now supports both filtered and full view
   const loadTopLevelOnly = async () => {
     setLoading(true);
     setError(null);
-    setHierarchyData(null); // Reset hierarchy data
+    // Don't reset hierarchy data to preserve expanded state
+    // setHierarchyData(null); // ❌ This was causing the reset
 
     try {
-      // Use filtered or full endpoint based on toggle
-      const endpoint = useFilteredView ? '/mining-hr/api/flowchart/filtered-hierarchy' : '/mining-hr/api/flowchart/hierarchy';
-      console.log(`📡 Loading ${useFilteredView ? 'filtered' : 'full'} organizational hierarchy from: ${endpoint}`);
+      // Always load full organizational hierarchy
+      const endpoint = '/api/flowchart/hierarchy';
+      console.log(`📡 Loading full organizational hierarchy from: ${endpoint}`);
       
       const response = await fetch(endpoint);
       
@@ -814,16 +925,44 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
         throw new Error(result.error || 'Invalid response from server');
       }
 
-      console.log(`📊 ${useFilteredView ? 'Filtered' : 'Full'} organizational hierarchy loaded:`, result);
+      console.log(`📊 Full organizational hierarchy loaded:`, result);
       
       // Validate the data structure
       if (!result.data.rootNodes || !Array.isArray(result.data.rootNodes)) {
         throw new Error('Invalid hierarchy data structure: missing rootNodes array');
       }
 
-      setHierarchyData(result.data);
+      console.log('🔍 Checking if data update is needed...');
+      console.log('  - Current nodes count:', nodes.length);
+      console.log('  - Current expanded nodes:', Array.from(expandedNodes));
       
-      // Note: Nodes will be set by the useEffect when hierarchyData changes
+      // Always ensure we have hierarchy data - don't let it become null
+      const hasExistingData = hierarchyData && hierarchyData.rootNodes && hierarchyData.rootNodes.length > 0;
+      const isDataDifferent = !hasExistingData || JSON.stringify(hierarchyData) !== JSON.stringify(result.data);
+      
+      if (isDataDifferent) {
+        console.log('🔄 New or different data detected - updating hierarchy');
+        setHierarchyData(result.data);
+        hierarchyDataRef.current = result.data; // Also update ref for immediate access
+        
+        // Convert to nodes immediately if we have no nodes yet
+        if (nodes.length === 0) {
+          console.log('🔄 No existing nodes - converting new hierarchy data to nodes');
+          const { nodes: flowNodes, edges: flowEdges } = convertRootNodesToFlowChart(result.data.rootNodes);
+          setNodes(flowNodes);
+          setEdges(flowEdges);
+        } else {
+          console.log('✅ Existing nodes preserved - view state maintained');
+        }
+      } else {
+        console.log('✅ Data unchanged - preserving current view state');
+        // Still ensure hierarchyData is set even if unchanged
+        if (!hierarchyData) {
+          console.log('🔧 Ensuring hierarchy data is set despite no changes');
+          setHierarchyData(result.data);
+          hierarchyDataRef.current = result.data;
+        }
+      }
 
     } catch (error) {
       console.error('❌ Error loading hierarchy:', error);
@@ -857,11 +996,8 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     const flowNodes = [];
     const flowEdges = [];
     
-    // Perfect alignment settings to match the image exactly
-    const nodeWidth = 280;
-    const nodeHeight = 200;
-    const horizontalGap = 40; // Slightly tighter gap as shown in image
-    const verticalGap = 280; // Optimal vertical spacing for clean hierarchy
+    // FIXED: Use consistent spacing constants
+    const { NODE_WIDTH, NODE_HEIGHT, HORIZONTAL_GAP, VERTICAL_GAP } = LAYOUT_CONSTANTS;
     
     // Collect all Level 2 children from all root nodes
     let allChildren = [];
@@ -899,19 +1035,19 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     if (allChildren.length > 0) {
       console.log(`📐 Positioning ${allChildren.length} Level 2 nodes in perfect horizontal alignment`);
       
-      // Calculate perfect horizontal distribution to match image layout
-      const totalLevel2Width = (allChildren.length * nodeWidth) + ((allChildren.length - 1) * horizontalGap);
-      const level2StartX = -(totalLevel2Width / 2) + (nodeWidth / 2);
+      // FIXED: Consistent horizontal distribution
+      const totalLevel2Width = (allChildren.length * NODE_WIDTH) + ((allChildren.length - 1) * HORIZONTAL_GAP);
+      const level2StartX = -(totalLevel2Width / 2) + (NODE_WIDTH / 2);
       
       allChildren.forEach((child, childIndex) => {
         const childNodeId = `child-${child.objectId}`;
-        const childX = level2StartX + (childIndex * (nodeWidth + horizontalGap));
+        const childX = level2StartX + (childIndex * (NODE_WIDTH + HORIZONTAL_GAP));
         const parentNodeId = `root-${child.parentId}`;
         
         flowNodes.push({
           id: childNodeId,
           type: 'progressiveOrg',
-          position: { x: childX, y: verticalGap }, // Perfect spacing below PRESIDENT OFFICE
+          position: { x: childX, y: VERTICAL_GAP }, // Consistent spacing
           data: {
             ...child,
             nodeType: child.objectType === 'S' ? 'position' : 'organization',
@@ -924,15 +1060,15 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           }
         });
 
-        // Create clean straight edges exactly like in the image
+        // FIXED: Simple, consistent edge creation
         flowEdges.push({
           id: `edge-${parentNodeId}-${childNodeId}`,
           source: parentNodeId,
           target: childNodeId,
-          type: 'straight', // Clean straight lines as shown in image
+          type: 'straight',
           animated: false,
           markerEnd: {
-            type: 'arrowclosed',
+            type: MarkerType.ArrowClosed,
             width: 8,
             height: 8,
             color: '#1976d2'
@@ -971,7 +1107,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     setSearching(true);
     
     try {
-      const response = await fetch(`/mining-hr/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      const response = await fetch(`/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
       const result = await response.json();
 
       if (!response.ok) {
@@ -998,8 +1134,24 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   // Handle refresh
   const handleRefresh = () => {
     setExpandedNodes(new Set());
+    setHiddenSiblings(new Set()); // Reset accordion state
+    setAccordionState(new Map()); // Reset accordion state
     loadTopLevelOnly();
   };
+
+  // Filter nodes based on accordion behavior - hide siblings when a node is expanded
+  const visibleNodes = React.useMemo(() => {
+    return nodes.filter(node => !hiddenSiblings.has(node.data.objectId));
+  }, [nodes, hiddenSiblings]);
+
+  // FIXED: Simple edge filtering - only show connections between visible nodes
+  const visibleEdges = React.useMemo(() => {
+    const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
+    
+    return edges.filter(edge => 
+      visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
+    );
+  }, [edges, visibleNodes]);
 
   return (
     <Box sx={{ width: '100%', height: '800px' }}>
@@ -1009,7 +1161,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           <Box display="flex" alignItems="center" gap={1}>
             <AccountTreeIcon color="primary" sx={{ fontSize: 28 }} />
             <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-              🚀 {useFilteredView ? 'Filtered' : 'Full'} Organizational Chart
+              🚀 Full Organizational Chart
             </Typography>
             {hierarchyData && (
               <Chip 
@@ -1018,37 +1170,9 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
                 size="small"
               />
             )}
-            {hierarchyData?.filterApplied && (
-              <Chip 
-                label="🎯 Specific Hierarchy Path"
-                color="success"
-                size="small"
-                sx={{ fontWeight: 'bold' }}
-              />
-            )}
           </Box>
 
           <Box display="flex" alignItems="center" gap={1}>
-            {/* View Toggle */}
-            <Button
-              onClick={() => setUseFilteredView(!useFilteredView)}
-              variant={useFilteredView ? "contained" : "outlined"}
-              size="small"
-              startIcon={useFilteredView ? <BusinessIcon /> : <AccountTreeIcon />}
-              sx={{
-                backgroundColor: useFilteredView ? '#2e7d32' : 'transparent',
-                color: useFilteredView ? 'white' : '#2e7d32',
-                borderColor: '#2e7d32',
-                '&:hover': {
-                  backgroundColor: useFilteredView ? '#1b5e20' : 'rgba(46, 125, 50, 0.1)',
-                },
-                fontWeight: 'bold'
-              }}
-              title={useFilteredView ? 'Switch to Full Organization Chart' : 'Switch to Filtered Specific Path View'}
-            >
-              {useFilteredView ? 'Filtered View' : 'Full View'}
-            </Button>
-
             {/* Search */}
             <TextField
               size="small"
@@ -1074,25 +1198,171 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
               Search
             </Button>
 
-            {/* Auto-organize Layout */}
-            <Button 
-              onClick={() => {
-                const organizedNodes = autoOrganizeLayout(nodes, edges);
-                setNodes(organizedNodes);
-              }} 
-              variant="outlined" 
-              size="small"
-              title="Auto-organize layout for neat appearance"
-              startIcon={<AccountTreeIcon />}
-            >
-              Organize
-            </Button>
+            {/* REMOVED: Auto-organize button to prevent layout interference */}
 
             {/* Refresh */}
-            <IconButton onClick={handleRefresh} disabled={loading} title={`Refresh ${useFilteredView ? 'Filtered' : 'Full'} View`}>
+            <IconButton onClick={handleRefresh} disabled={loading} title="Refresh Full Organizational Chart">
               <RefreshIcon />
             </IconButton>
           </Box>
+        </Box>
+
+        {/* Hierarchy Connection Lines Legend */}
+        <Box sx={{ mt: 1, p: 1.5, backgroundColor: '#f5f5f5', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+          <Box display="flex" alignItems="center" gap={1} mb={1}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '13px' }}>
+              📊 Hierarchy Connection Lines Guide:
+            </Typography>
+          </Box>
+          <Grid container spacing={1} alignItems="center">
+            <Grid item xs={12} sm={6} md={4}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box 
+                  sx={{ 
+                    width: 30, 
+                    height: 4, 
+                    backgroundColor: '#0d47a1', 
+                    borderRadius: 2,
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      right: -6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid #0d47a1',
+                      borderTop: '3px solid transparent',
+                      borderBottom: '3px solid transparent'
+                    }
+                  }} 
+                />
+                <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 'bold' }}>
+                  CEO → Divisions
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box 
+                  sx={{ 
+                    width: 30, 
+                    height: 3.5, 
+                    backgroundColor: '#1b5e20', 
+                    borderRadius: 2,
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      right: -6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid #1b5e20',
+                      borderTop: '3px solid transparent',
+                      borderBottom: '3px solid transparent'
+                    }
+                  }} 
+                />
+                <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 'bold' }}>
+                  Division → Dept
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box 
+                  sx={{ 
+                    width: 30, 
+                    height: 3, 
+                    backgroundColor: '#e65100', 
+                    borderRadius: 2,
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      right: -6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid #e65100',
+                      borderTop: '3px solid transparent',
+                      borderBottom: '3px solid transparent'
+                    }
+                  }} 
+                />
+                <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 'bold' }}>
+                  Dept → Sub-Dept
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box 
+                  sx={{ 
+                    width: 30, 
+                    height: 2.5, 
+                    backgroundColor: '#4a148c', 
+                    borderRadius: 2,
+                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(255,255,255,0.3) 4px, rgba(255,255,255,0.3) 8px)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      right: -6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid #4a148c',
+                      borderTop: '3px solid transparent',
+                      borderBottom: '3px solid transparent'
+                    }
+                  }} 
+                />
+                <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 'bold' }}>
+                  Level 3+ (Dashed)
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Box 
+                  sx={{ 
+                    width: 30, 
+                    height: 2, 
+                    backgroundColor: '#b71c1c', 
+                    borderRadius: 2,
+                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.4) 3px, rgba(255,255,255,0.4) 6px)',
+                    position: 'relative',
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      right: -6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid #b71c1c',
+                      borderTop: '2px solid transparent',
+                      borderBottom: '2px solid transparent'
+                    }
+                  }} 
+                />
+                <Typography variant="caption" sx={{ fontSize: '10px', fontWeight: 'bold' }}>
+                  Level 4+ (Animated)
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Typography variant="caption" sx={{ fontSize: '10px', fontStyle: 'italic', color: '#666' }}>
+                💡 Thicker lines = Higher hierarchy
+              </Typography>
+            </Grid>
+          </Grid>
         </Box>
 
         {/* Performance Info */}
@@ -1142,24 +1412,57 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       <Box sx={{ height: '700px', border: '2px solid #ddd', borderRadius: 2, overflow: 'hidden' }}>
         {hierarchyData && !loading ? (
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={visibleNodes}
+            edges={visibleEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
-            fitView
+            edgeTypes={edgeTypes}
+            onMove={(event, viewport) => setViewportState(viewport)}
+            defaultViewport={viewportState.zoom === 1 ? { x: 0, y: 30, zoom: 0.75 } : viewportState} // Preserve viewport or use initial
+            fitView={false} // FIXED: Prevent automatic fitView during expand operations
             fitViewOptions={{
-              padding: 0.15, // Slightly tighter padding for better image match
+              padding: 0.1,
               includeHiddenNodes: false,
-              minZoom: 0.4,
-              maxZoom: 1.5
+              minZoom: 0.5,
+              maxZoom: 1.2,
+              duration: 800
             }}
             attributionPosition="bottom-left"
             minZoom={0.3}
             maxZoom={2}
-            defaultViewport={{ x: 0, y: 30, zoom: 0.75 }} // Perfect initial view to match image
+            elementsSelectable={true}
+            nodesConnectable={false}
+            nodesDraggable={true}
+            edgesUpdatable={false}
+            edgesFocusable={true}
+            selectNodesOnDrag={false}
+            panOnDrag={true}
+            zoomOnScroll={true}
+            zoomOnPinch={true}
+            preventScrolling={false}
+            nodeOrigin={[0.5, 0]}
+            defaultEdgeOptions={{
+              type: 'straight',
+              animated: false,
+              style: { 
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round',
+                strokeWidth: 2,
+                stroke: '#1976d2'
+              }
+            }}
+            connectionLineStyle={{ strokeWidth: 2, stroke: '#1976d2' }}
+            snapToGrid={true}
+            snapGrid={[20, 20]}
           >
-            <Background color="#f0f7ff" gap={25} size={2} />
+            <Background 
+              color="#e3f2fd" 
+              gap={20} 
+              size={1} 
+              variant="lines"
+              style={{ opacity: 0.3 }}
+            />
             <Controls position="top-right" />
             <MiniMap 
               nodeColor={(node) => {

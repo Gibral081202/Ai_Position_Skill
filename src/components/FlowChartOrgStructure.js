@@ -342,7 +342,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     formData.append('orgFile', file);
 
     try {
-      const response = await fetch('/mining-hr/api/org-chart/upload', {
+      const response = await fetch('/api/org-chart/upload', {
         method: 'POST',
         body: formData
       });
@@ -369,7 +369,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
   // Load only top-level organizational nodes
   const loadTopLevelNodesOnly = async () => {
     try {
-      const response = await fetch('/mining-hr/api/org-chart/roots');
+      const response = await fetch('/api/org-chart/roots');
       const result = await response.json();
 
       if (!response.ok) {
@@ -438,7 +438,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     try {
       if (shouldExpand) {
         // Load children for this node
-        const response = await fetch(`/mining-hr/api/org-chart/children/${nodeId}`);
+        const response = await fetch(`/api/org-chart/children/${nodeId}`);
         const result = await response.json();
 
         if (!response.ok) {

@@ -502,8 +502,8 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   const LAYOUT_CONSTANTS = {
     NODE_WIDTH: 320,
     NODE_HEIGHT: 180,
-    HORIZONTAL_GAP: 80,
-    VERTICAL_GAP: 200
+    HORIZONTAL_GAP: 100, // Increased from 80 to 100 for better horizontal spacing
+    VERTICAL_GAP: 350    // Increased from 200 to 350 for better vertical spacing between levels
   };
 
   // Helper function: Clean, predictable layout with consistent spacing

@@ -457,8 +457,8 @@ const OrganizationalFlowchart = ({ onPersonSelect }) => {
       const nodeId = `node-${nodeCounter++}`;
       
       // Calculate positions for proper hierarchical layout
-      const levelSpacing = 250;
-      const siblingSpacing = 280;
+      const levelSpacing = 350; // Increased from 250 to 350 for better visual spacing
+      const siblingSpacing = 300; // Increased from 280 to 300 for better horizontal spacing
       const x = parentX + (siblingIndex - (totalSiblings - 1) / 2) * siblingSpacing;
       const y = level * levelSpacing;
       

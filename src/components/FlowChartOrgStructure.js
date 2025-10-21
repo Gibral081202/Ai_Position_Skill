@@ -483,7 +483,7 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
     
     // Calculate layout for children
     const childSpacing = 250;
-    const levelSpacing = 200;
+    const levelSpacing = 350; // Increased from 200 to 350 for better visual spacing
     const parentX = parentNode.position.x;
     const parentY = parentNode.position.y;
     const childY = parentY + levelSpacing;

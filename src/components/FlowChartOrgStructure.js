@@ -545,14 +545,19 @@ const FlowChartOrgStructure = ({ onPersonSelect }) => {
 
   // Remove children nodes from flowchart
   const removeChildrenFromFlowchart = (parentNodeId) => {
+    // First, get the nodes that will be removed
+    const nodesToRemove = nodes.filter(node => node.data.parentId === parentNodeId);
+    const nodeIdsToRemove = new Set(nodesToRemove.map(node => node.id));
+    
+    // Remove child nodes
     setNodes(prevNodes => 
       prevNodes.filter(node => node.data.parentId !== parentNodeId)
     );
+    
+    // Remove edges that connect to the removed nodes
     setEdges(prevEdges => 
       prevEdges.filter(edge => 
-        !prevNodes.some(node => 
-          node.data.parentId === parentNodeId && (node.id === edge.source || node.id === edge.target)
-        )
+        !nodeIdsToRemove.has(edge.source) && !nodeIdsToRemove.has(edge.target)
       )
     );
   };

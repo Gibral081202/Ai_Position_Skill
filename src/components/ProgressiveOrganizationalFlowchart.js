@@ -756,7 +756,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           return newMap;
         });
 
-        console.log(`🎵 Accordion: Expanding ${expandingNode.data.name}, hiding ${siblingIds.length} siblings at level ${level}`);
+        console.log(`🎵 Accordion: Expanding ${expandingNode.data.name}, hiding ${siblingIds.length} siblings at level ${level}`, { siblingIds });
       } else {
         // Show all siblings when collapsing this node
         const siblingIds = siblings.map(sibling => sibling.data.objectId);
@@ -773,7 +773,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           return newMap;
         });
 
-        console.log(`🎵 Accordion: Collapsing ${expandingNode.data.name}, showing ${siblingIds.length} siblings at level ${level}`);
+        console.log(`🎵 Accordion: Collapsing ${expandingNode.data.name}, showing ${siblingIds.length} siblings at level ${level}`, { siblingIds });
       }
 
       return prevNodes;
@@ -1141,16 +1141,45 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
 
   // Filter nodes based on accordion behavior - hide siblings when a node is expanded
   const visibleNodes = React.useMemo(() => {
-    return nodes.filter(node => !hiddenSiblings.has(node.data.objectId));
+    const filtered = nodes.filter(node => !hiddenSiblings.has(node.data.objectId));
+    
+    // Debug logging to track node filtering
+    if (nodes.length !== filtered.length) {
+      console.log(`👁️ Node filtering: ${nodes.length} total → ${filtered.length} visible (${nodes.length - filtered.length} hidden)`);
+      console.log(`Hidden siblings:`, Array.from(hiddenSiblings));
+    }
+    
+    return filtered;
   }, [nodes, hiddenSiblings]);
 
-  // FIXED: Simple edge filtering - only show connections between visible nodes
+  // FIXED: Enhanced edge filtering - only show connections between visible nodes
   const visibleEdges = React.useMemo(() => {
     const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
     
-    return edges.filter(edge => 
-      visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
-    );
+    const filteredEdges = edges.filter(edge => {
+      // Both source and target must be visible
+      const sourceVisible = visibleNodeIds.has(edge.source);
+      const targetVisible = visibleNodeIds.has(edge.target);
+      const edgeVisible = sourceVisible && targetVisible;
+      
+      // Debug: Log when edges are filtered out
+      if (!edgeVisible && (sourceVisible || targetVisible)) {
+        console.log(`🔗 Filtering edge ${edge.id}: source(${edge.source}):${sourceVisible}, target(${edge.target}):${targetVisible}`);
+      }
+      
+      return edgeVisible;
+    });
+    
+    // Debug logging to track edge filtering
+    if (edges.length !== filteredEdges.length) {
+      console.log(`🔗 Edge filtering: ${edges.length} total → ${filteredEdges.length} visible (${edges.length - filteredEdges.length} hidden)`);
+      
+      // Show which edges were filtered out
+      const hiddenEdges = edges.filter(edge => !filteredEdges.includes(edge));
+      console.log(`Hidden edges:`, hiddenEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
+    }
+    
+    return filteredEdges;
   }, [edges, visibleNodes]);
 
   return (
@@ -1412,6 +1441,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       <Box sx={{ height: '700px', border: '2px solid #ddd', borderRadius: 2, overflow: 'hidden' }}>
         {hierarchyData && !loading ? (
           <ReactFlow
+            key={`flowchart-${visibleNodes.length}-${visibleEdges.length}-${Array.from(hiddenSiblings).join(',')}`} // Force re-render when visibility changes
             nodes={visibleNodes}
             edges={visibleEdges}
             onNodesChange={onNodesChange}

@@ -30,6 +30,15 @@ const upload = multer({
   }
 });
 
+// Request logging middleware
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    console.log(`🌐 API Request: ${req.method} ${req.path} from ${req.ip}`);
+    console.log(`🔗 User-Agent: ${req.get('User-Agent') || 'Unknown'}`);
+  }
+  next();
+});
+
 // Middleware
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? [
@@ -648,6 +657,41 @@ app.delete('/api/org-chart/database/clear', async (req, res) => {
   }
 });
 
+// ==================== DEBUG AND HEALTH CHECK ENDPOINTS ====================
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  console.log('💚 Health check requested');
+  res.json({
+    success: true,
+    message: 'HRAI Mining HR API is healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    version: '1.0.0'
+  });
+});
+
+// Debug endpoint to show all available routes
+app.get('/api/debug/routes', (req, res) => {
+  console.log('🔍 Debug routes requested');
+  const routes = [];
+  
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods)
+      });
+    }
+  });
+  
+  res.json({
+    success: true,
+    routes: routes,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ==================== NEW ENHANCED ORGANIZATIONAL FLOWCHART API ENDPOINTS ====================
 
 /**
@@ -656,6 +700,9 @@ app.delete('/api/org-chart/database/clear', async (req, res) => {
  */
 app.get('/api/flowchart/hierarchy', async (req, res) => {
   console.log('🏢 Received request for organizational flowchart hierarchy');
+  console.log('📍 Request URL:', req.url);
+  console.log('📍 Request path:', req.path);
+  console.log('📍 Request headers:', req.headers);
   
   try {
     const flowchartService = new OrganizationalFlowchartService();

@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import * as XLSX from 'xlsx';
 import { assessPositionQualifications, generateSkillsAndToolsOptions } from '../services/geminiService';
+import { apiCall } from '../utils/apiUtils';
 import '../excel-theme.css';
 import ProgressiveOrganizationalFlowchart from './ProgressiveOrganizationalFlowchart';
 
@@ -875,6 +876,71 @@ const ExcelLikeTable = () => {
             <ProgressiveOrganizationalFlowchart onPersonSelect={handlePersonSelectFromFlowchart} />
           </div>
           
+          {/* API Test Panel - Temporary for debugging */}
+          <div style={{ 
+            marginTop: '8px', 
+            padding: '12px', 
+            backgroundColor: '#fff3e0', 
+            borderRadius: '6px',
+            border: '1px solid #ff9800'
+          }}>
+            <Typography variant="body2" style={{ fontSize: '12px', fontWeight: 'bold', color: '#e65100' }}>
+              🔧 API Debug Tools:
+            </Typography>
+            <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={async () => {
+                  try {
+                    console.log('🧪 Testing API health endpoint...');
+                    const response = await apiCall('/health');
+                    const result = await response.json();
+                    console.log('✅ Health check result:', result);
+                    alert('✅ API Health check successful! Check console for details.');
+                  } catch (error) {
+                    console.error('❌ Health check failed:', error);
+                    alert('❌ API Health check failed: ' + error.message);
+                  }
+                }}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px'
+                }}
+              >
+                Test API Health
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    console.log('🧪 Testing hierarchy endpoint...');
+                    const response = await apiCall('/flowchart/hierarchy');
+                    const result = await response.json();
+                    console.log('✅ Hierarchy test result:', result);
+                    alert('✅ Hierarchy API test successful! Check console for details.');
+                  } catch (error) {
+                    console.error('❌ Hierarchy test failed:', error);
+                    alert('❌ Hierarchy API test failed: ' + error.message);
+                  }
+                }}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#2196f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px'
+                }}
+              >
+                Test Hierarchy API
+              </button>
+            </div>
+          </div>
+
           {/* Information Panel */}
           <div style={{ 
             marginTop: '8px', 

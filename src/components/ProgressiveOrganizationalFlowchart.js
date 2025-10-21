@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { apiCall } from '../utils/apiUtils';
 import {
   Box,
   Typography,
@@ -909,16 +910,12 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
 
     try {
       // Always load full organizational hierarchy
-      const endpoint = '/api/flowchart/hierarchy';
+      const endpoint = '/flowchart/hierarchy';
       console.log(`📡 Loading full organizational hierarchy from: ${endpoint}`);
       
-      const response = await fetch(endpoint);
+      const response = await apiCall(endpoint);
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Server responded with ${response.status}: ${errorText || 'Unknown error'}`);
-      }
-
+      // Response is already checked in apiCall, so we can directly get JSON
       const result = await response.json();
 
       if (!result.success || !result.data) {
@@ -1107,12 +1104,8 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     setSearching(true);
     
     try {
-      const response = await fetch(`/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      const response = await apiCall(`/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Search failed');
-      }
 
       console.log(`🔍 Search results for "${searchTerm}":`, result.data);
       setSearchResults(result.data || []);

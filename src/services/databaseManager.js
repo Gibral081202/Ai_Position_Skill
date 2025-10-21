@@ -1,5 +1,10 @@
-require('dotenv').config({ path: '.env.local' });
-require('dotenv').config(); // Also load .env file
+// Load environment configuration based on NODE_ENV
+if (process.env.NODE_ENV === 'production') {
+  require('dotenv').config({ path: '.env.production' });
+} else {
+  require('dotenv').config({ path: '.env.local' });
+}
+require('dotenv').config(); // Fallback to .env file
 const sql = require('mssql');
 
 // Database configuration - use production settings as default

@@ -1,3 +1,7 @@
+// Load environment configuration first
+require('dotenv').config({ path: '.env.production' });
+require('dotenv').config(); // Fallback to .env
+
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
@@ -27,12 +31,26 @@ const upload = multer({
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? [
+    'http://wecare.techconnect.co.id',
+    'https://wecare.techconnect.co.id',
+    'http://localhost',
+    'https://localhost'
+  ] : true,
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files from the React app build directory
-app.use(express.static(path.join(__dirname, 'build')));
+// Serve static files from the React app build directory at /mining-hr path
+if (process.env.NODE_ENV === 'production') {
+  // Production: Serve static files at /mining-hr path (NGINX handles this)
+  console.log('🏭 Production mode: Static files served by NGINX at /mining-hr/');
+} else {
+  // Development: Serve static files directly
+  app.use(express.static(path.join(__dirname, 'build')));
+}
 
 // ==================== ORGANIZATIONAL CHART API ENDPOINTS ====================
 
@@ -855,15 +873,31 @@ app.get('/api/health', (req, res) => {
 
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+  if (process.env.NODE_ENV === 'production') {
+    // In production, NGINX handles static files, so redirect unknown API calls
+    res.status(404).json({ 
+      error: 'API endpoint not found',
+      path: req.path,
+      message: 'This endpoint does not exist. Check the API documentation.'
+    });
+  } else {
+    // In development, serve the React app for client-side routing
+    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+  }
 });
 
 // Use PORT environment variable or default to 3050
 const port = process.env.PORT || 3050;
+const host = process.env.HOST || 'localhost';
 
-app.listen(port, () => {
-  console.log(`🚀 HRAI server is running on port ${port}`);
-  console.log(`🌐 Access the application at: http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`🚀 HRAI server is running on ${host}:${port}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌍 Public access: http://wecare.techconnect.co.id/mining-hr/`);
+  } else {
+    console.log(`🌐 Local access: http://localhost:${port}`);
+  }
   console.log(`⛏️  Mining Industry HR Position Qualification Assessment System`);
 });
 

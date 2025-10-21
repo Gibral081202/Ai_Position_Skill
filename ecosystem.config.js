@@ -1,20 +1,38 @@
 module.exports = {
-  apps: [{
-    name: 'HRAI-Mining-HR',
-    script: 'server.js',
-    cwd: '/var/www/Ai_Position_Skill',
-    instances: 1,
-    autorestart: true,
-    watch: false,
-    max_memory_restart: '1G',
-    env_file: '/var/www/Ai_Position_Skill/.env',
-    env: {
-      NODE_ENV: 'production',
-      PORT: 3050
-    },
-    error_file: '/var/log/pm2/HRAI-Mining-HR-error.log',
-    out_file: '/var/log/pm2/HRAI-Mining-HR-out.log',
-    log_file: '/var/log/pm2/HRAI-Mining-HR-combined.log',
-    time: true
-  }]
+  apps: [
+    {
+      name: 'HRAI-Mining-HR',
+      script: 'server.js',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3050,
+        HOST: '127.0.0.1'
+      },
+      env_production: {
+        NODE_ENV: 'production',
+        PORT: 3050,
+        HOST: '127.0.0.1'
+      },
+      // PM2 Configuration
+      max_memory_restart: '2G',
+      error_file: './logs/err.log',
+      out_file: './logs/out.log',
+      log_file: './logs/combined.log',
+      time: true,
+      
+      // Auto-restart configuration
+      autorestart: true,
+      watch: false,
+      max_restarts: 10,
+      min_uptime: '10s',
+      
+      // Performance monitoring
+      monitoring: false,
+      
+      // Environment files
+      env_file: '.env.production'
+    }
+  ]
 };

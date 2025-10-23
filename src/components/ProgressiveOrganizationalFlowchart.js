@@ -616,8 +616,9 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
         return;
       }
 
-      // Add generous padding around the focused area (match the target image)
-      const padding = 80; // Increased padding for better visibility
+      // 🎯 ENHANCED: Aggressive zoom strategy to match target image behavior
+      // Add moderate padding around the focused area for tight focus
+      const padding = 50; // Reduced padding for tighter focus
       const focusArea = {
         x: minX - padding,
         y: minY - padding,
@@ -635,23 +636,38 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
 
       console.log(`🎯 Focus area:`, focusArea);
 
-      // Calculate zoom to fit the focus area with optimal visibility
-      const zoomX = containerWidth / focusArea.width;
-      const zoomY = containerHeight / focusArea.height;
+      // 🎯 ENHANCED: Aggressive zoom calculation for prominent display
+      // Calculate base zoom to fit the focus area
+      const baseZoomX = containerWidth / focusArea.width;
+      const baseZoomY = containerHeight / focusArea.height;
       
       // Validate zoom calculations
-      if (isNaN(zoomX) || isNaN(zoomY) || zoomX <= 0 || zoomY <= 0) {
-        console.warn(`⚠️ Invalid zoom calculations:`, { zoomX, zoomY });
+      if (isNaN(baseZoomX) || isNaN(baseZoomY) || baseZoomX <= 0 || baseZoomY <= 0) {
+        console.warn(`⚠️ Invalid zoom calculations:`, { baseZoomX, baseZoomY });
         return;
       }
       
-      // Use the smaller zoom to ensure everything fits, but cap it for readability
-      let optimalZoom = Math.min(zoomX, zoomY);
+      // Use the smaller base zoom to ensure everything fits
+      let baseZoom = Math.min(baseZoomX, baseZoomY);
       
-      // Ensure zoom is within reasonable bounds for node readability
-      optimalZoom = Math.max(0.4, Math.min(optimalZoom, 1.0)); // Between 0.4x and 1.0x
+      // 🚀 ENHANCED: More aggressive zoom strategy for prominent node display
+      let optimalZoom;
       
-      console.log(`🔍 Calculated zoom: ${optimalZoom} (zoomX: ${zoomX}, zoomY: ${zoomY})`);
+      if (childrenIds.length === 0) {
+        // 📍 Single node focus: Use higher zoom for prominence
+        optimalZoom = Math.min(baseZoom * 1.2, 1.8); // Allow up to 1.8x for single nodes
+      } else if (childrenIds.length <= 3) {
+        // 👥 Small group: Use moderate aggressive zoom
+        optimalZoom = Math.min(baseZoom * 1.1, 1.4); // Allow up to 1.4x for small groups
+      } else {
+        // 🏢 Large group: Use standard zoom but ensure minimum visibility
+        optimalZoom = Math.min(baseZoom, 1.2); // Allow up to 1.2x for large groups
+      }
+      
+      // 🎯 Ensure minimum zoom for readability but allow higher zoom for prominence
+      optimalZoom = Math.max(0.5, optimalZoom); // Minimum 0.5x, no upper limit constraint
+      
+      console.log(`🔍 Enhanced zoom: ${optimalZoom} (base: ${baseZoom}, children: ${childrenIds.length})`);
 
       // Calculate the center point of the focus area with validation
       const focusCenterX = focusArea.x + (focusArea.width / 2);
@@ -678,23 +694,26 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
         return;
       }
 
-      console.log(`🎯 NEW VIEWPORT:`, {
+      console.log(`🎯 ENHANCED VIEWPORT:`, {
         parentNode: parentNodeId,
         childrenCount: childrenIds.length,
         containerDimensions: { width: containerWidth, height: containerHeight },
         focusArea,
         focusCenter: { x: focusCenterX, y: focusCenterY },
-        newViewport
+        newViewport,
+        zoomLevel: `${(optimalZoom * 100).toFixed(1)}%`
       });
 
-      // Apply the focused viewport with smooth animation
+      // 🚀 Apply the focused viewport with smooth, prominent animation
       try {
-        setViewport(newViewport, { duration: 800 });
+        setViewport(newViewport, { duration: 1000 }); // Longer animation for dramatic effect
+        console.log(`✅ Successfully applied enhanced zoom focus - Level: ${(optimalZoom * 100).toFixed(1)}%`);
       } catch (viewportError) {
         console.error('❌ Error setting viewport:', viewportError);
         // Fallback: try without animation
         try {
           setViewport(newViewport, { duration: 0 });
+          console.log(`✅ Applied enhanced zoom focus (fallback) - Level: ${(optimalZoom * 100).toFixed(1)}%`);
         } catch (fallbackError) {
           console.error('❌ Viewport fallback also failed:', fallbackError);
         }
@@ -1102,81 +1121,63 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
 
       // 🎯 FOCUSED ZOOM ON PARENT AND NEW CHILDREN
       if (shouldExpand) {
-        // Focus viewport specifically on the expanded parent and its new children
-        // Use a longer delay to ensure nodes are fully rendered and measured
+        // 🎯 ENHANCED: More aggressive and reliable focus timing for dramatic zoom effect
         setTimeout(() => {
           const nodeData = findNodeInHierarchy(currentHierarchyData.rootNodes, nodeId);
           const childrenIds = nodeData?.children?.map(child => child.objectId) || [];
           
-          console.log('🎯 Focusing view on expanded node and children:', {
+          console.log('🎯 ENHANCED: Focusing view on expanded node with dramatic zoom:', {
             parentId: nodeId,
             childrenIds: childrenIds,
             timestamp: new Date().toISOString()
           });
           
-          // Try to focus with a retry mechanism in case nodes aren't ready
+          // 🚀 Enhanced retry mechanism for reliable dramatic focus
           const attemptFocus = (attempt = 1) => {
             try {
               // Get currently visible nodes (not hidden by accordion)
               const currentNodes = getNodes();
               const rawNodes = nodes; // Also check raw nodes from state
               
-              console.log(`🔍 DEBUG: ReactFlow getNodes() count: ${currentNodes.length}`);
-              console.log(`🔍 DEBUG: Raw nodes state count: ${rawNodes.length}`);
-              console.log(`🔍 DEBUG: Current ReactFlow nodes:`, currentNodes.map(n => ({ id: n.id, type: n.type, objectId: n.data?.objectId })));
-              console.log(`🔍 DEBUG: Raw state nodes:`, rawNodes.map(n => ({ id: n.id, type: n.type, objectId: n.data?.objectId })));
+              console.log(`🔍 ENHANCED: Attempt ${attempt} - ReactFlow nodes: ${currentNodes.length}`);
               
               // Filter children to only include those that are actually visible (not hidden)
               const visibleChildrenIds = childrenIds.filter(childId => 
                 !hiddenSiblings.has(childId.replace('child-', ''))
               );
               
-              console.log(`👁️ Visible children filter: ${visibleChildrenIds.length}/${childrenIds.length} children are visible (not hidden by accordion)`);
-              console.log(`🔍 Looking for child nodes with IDs:`, visibleChildrenIds.map(id => `child-${id}`));
+              console.log(`👁️ ENHANCED: ${visibleChildrenIds.length}/${childrenIds.length} children visible for dramatic zoom`);
               
               // Check positions only for visible children
               const childrenWithPositions = visibleChildrenIds.filter(childId => {
                 const childNode = currentNodes.find(node => node.id === `child-${childId}`) ||
                                  rawNodes.find(node => node.id === `child-${childId}`);
-                const hasValidPosition = childNode && childNode.position && 
+                return childNode && childNode.position && 
                        !isNaN(childNode.position.x) && !isNaN(childNode.position.y);
-                
-                // Debug: Log each child's status
-                if (!hasValidPosition) {
-                  const expectedId = `child-${childId}`;
-                  const foundInGetNodes = !!currentNodes.find(node => node.id === expectedId);
-                  const foundInRawNodes = !!rawNodes.find(node => node.id === expectedId);
-                  
-                  console.log(`🔍 Child ${childId}: node=${!!childNode}, position=${childNode?.position}, x=${childNode?.position?.x}, y=${childNode?.position?.y}`);
-                  console.log(`🔍 Child ${childId}: found in getNodes=${foundInGetNodes}, found in rawNodes=${foundInRawNodes}`);
-                }
-                
-                return hasValidPosition;
               });
 
-              console.log(`🔍 Position check attempt ${attempt}: ${childrenWithPositions.length}/${visibleChildrenIds.length} visible children have valid positions`);
+              console.log(`🔍 ENHANCED: ${childrenWithPositions.length}/${visibleChildrenIds.length} positioned for dramatic zoom`);
 
-              // Only proceed if all visible children have valid positions
-              if (visibleChildrenIds.length > 0 && childrenWithPositions.length === visibleChildrenIds.length) {
+              // 🎯 Apply dramatic focus more aggressively - even with no children for single node focus
+              if (visibleChildrenIds.length === 0 || childrenWithPositions.length === visibleChildrenIds.length) {
+                console.log(`🚀 ENHANCED: Applying dramatic zoom focus NOW!`);
                 focusOnExpandedArea(nodeId, visibleChildrenIds);
-              } else if (visibleChildrenIds.length === 0) {
-                console.warn(`⚠️ No visible children found - accordion may have hidden all siblings`);
               } else {
-                console.warn(`⏳ Not all visible children have positions yet (${childrenWithPositions.length}/${visibleChildrenIds.length}), retrying...`);
-                if (attempt < 5) { // Increased max attempts
-                  setTimeout(() => attemptFocus(attempt + 1), 300); // Slightly longer delay
+                console.warn(`⏳ ENHANCED: Retrying dramatic focus (${childrenWithPositions.length}/${visibleChildrenIds.length})`);
+                if (attempt < 6) { // More attempts for reliability
+                  setTimeout(() => attemptFocus(attempt + 1), 200); // Faster retry
                 }
               }
             } catch (error) {
-              console.warn(`Focus attempt ${attempt} failed:`, error);
-              if (attempt < 5) {
-                setTimeout(() => attemptFocus(attempt + 1), 300);
+              console.warn(`ENHANCED Focus attempt ${attempt} failed:`, error);
+              if (attempt < 6) {
+                setTimeout(() => attemptFocus(attempt + 1), 200);
               }
             }
           };
           
           attemptFocus();
-        }, 500); // Increased delay to ensure DOM updates are complete
+        }, 300); // Reduced delay for more responsive zoom
         
         // Keep the original scroll callback if provided
         if (onExpandScroll) {
@@ -1315,15 +1316,22 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
         setHierarchyData(result.data);
         hierarchyDataRef.current = result.data; // Also update ref for immediate access
         
-        // Convert to nodes immediately if we have no nodes yet
-        if (nodes.length === 0) {
-          console.log('🔄 No existing nodes - converting new hierarchy data to nodes');
-          const { nodes: flowNodes, edges: flowEdges } = convertRootNodesToFlowChart(result.data.rootNodes);
-          setNodes(flowNodes);
-          setEdges(flowEdges);
-        } else {
-          console.log('✅ Existing nodes preserved - view state maintained');
-        }
+        // Convert to nodes immediately if we have no nodes yet OR if this is a refresh (hierarchyData was null)
+        // FIXED: Use setTimeout to avoid racing with expand operations
+        setTimeout(() => {
+          setNodes(currentNodes => {
+            const isRefresh = !hierarchyData; // If hierarchyData was null, this is a refresh
+            if (currentNodes.length === 0 || isRefresh) {
+              console.log(isRefresh ? '🔄 Refresh detected - resetting to initial view' : '🔄 No existing nodes - converting new hierarchy data to nodes');
+              const { nodes: flowNodes, edges: flowEdges } = convertRootNodesToFlowChart(result.data.rootNodes);
+              setEdges(flowEdges);
+              return flowNodes;
+            } else {
+              console.log('✅ Existing nodes preserved - view state maintained');
+              return currentNodes;
+            }
+          });
+        }, 100); // Small delay to let expand operations complete
       } else {
         console.log('✅ Data unchanged - preserving current view state');
         // Still ensure hierarchyData is set even if unchanged
@@ -1512,8 +1520,12 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
     setHiddenSiblings(new Set()); // Reset accordion state
     setAccordionState(new Map()); // Reset accordion state
     
-    // Clear all edges to prevent duplicates on reload
+    // Clear all nodes and edges to reset to initial state
+    setNodes([]);
     setEdges([]);
+    
+    // Reset hierarchy data to force fresh conversion
+    setHierarchyData(null);
     
     loadTopLevelOnly();
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   CircularProgress, 
   Box, 
@@ -11,11 +11,14 @@ import {
 } from '@mui/material';
 import * as XLSX from 'xlsx';
 import { assessPositionQualifications, generateSkillsAndToolsOptions } from '../services/geminiService';
-import { apiCall } from '../utils/apiUtils';
 import '../excel-theme.css';
 import ProgressiveOrganizationalFlowchart from './ProgressiveOrganizationalFlowchart';
 
 const ExcelLikeTable = () => {
+  // Refs for scroll navigation
+  const orgChartRef = useRef(null);
+  const assessmentTableRef = useRef(null);
+
   const [rows, setRows] = useState([
     {
       id: 1,
@@ -51,6 +54,29 @@ const ExcelLikeTable = () => {
   const [generatingOptions, setGeneratingOptions] = useState(false);
   const [error, setError] = useState(null);
   const [selectedRowId, setSelectedRowId] = useState(rows[0]?.id || 1);
+
+  // Scroll utilities
+  const scrollToSection = (ref, offset = 0) => {
+    if (ref.current) {
+      const elementPosition = ref.current.offsetTop;
+      const offsetPosition = elementPosition - offset;
+      
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollToAssessmentTable = () => {
+    console.log('🎯 Scrolling to assessment table...');
+    scrollToSection(assessmentTableRef, 100); // 100px offset from top
+  };
+
+  const scrollToOrgChart = () => {
+    console.log('🎯 Scrolling to organizational chart...');
+    scrollToSection(orgChartRef, 100); // 100px offset from top
+  };
 
   // Predefined options - Mining Industry Focus
   const positionTitles = [
@@ -151,6 +177,12 @@ const ExcelLikeTable = () => {
       return updatedRows;
     });
     setSelectedRowId(newId);
+
+    // 🎯 AUTO-SCROLL TO ASSESSMENT TABLE
+    setTimeout(() => {
+      console.log('🚀 Auto-scrolling to assessment table for staff member:', name);
+      scrollToAssessmentTable();
+    }, 500); // Small delay to ensure DOM is updated
 
     console.log('✅ Added new row for staff member:', name, 'Position:', positionTitle, 'Level:', positionLevel);
   };
@@ -836,7 +868,7 @@ const ExcelLikeTable = () => {
       </div>
 
         {/* Organizational Structure Flowchart - Enhanced Database-Driven Version */}
-        <div style={{ marginTop: '12px' }}>
+        <div ref={orgChartRef} style={{ marginTop: '12px' }}>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -873,74 +905,12 @@ const ExcelLikeTable = () => {
             overflow: 'hidden',
             backgroundColor: '#f8f9fa'
           }}>
-            <ProgressiveOrganizationalFlowchart onPersonSelect={handlePersonSelectFromFlowchart} />
+            <ProgressiveOrganizationalFlowchart 
+              onPersonSelect={handlePersonSelectFromFlowchart}
+              onExpandScroll={scrollToOrgChart}
+            />
           </div>
           
-          {/* API Test Panel - Temporary for debugging */}
-          <div style={{ 
-            marginTop: '8px', 
-            padding: '12px', 
-            backgroundColor: '#fff3e0', 
-            borderRadius: '6px',
-            border: '1px solid #ff9800'
-          }}>
-            <Typography variant="body2" style={{ fontSize: '12px', fontWeight: 'bold', color: '#e65100' }}>
-              🔧 API Debug Tools:
-            </Typography>
-            <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button 
-                onClick={async () => {
-                  try {
-                    console.log('🧪 Testing API health endpoint...');
-                    const response = await apiCall('/health');
-                    const result = await response.json();
-                    console.log('✅ Health check result:', result);
-                    alert('✅ API Health check successful! Check console for details.');
-                  } catch (error) {
-                    console.error('❌ Health check failed:', error);
-                    alert('❌ API Health check failed: ' + error.message);
-                  }
-                }}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#4caf50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                Test API Health
-              </button>
-              <button 
-                onClick={async () => {
-                  try {
-                    console.log('🧪 Testing hierarchy endpoint...');
-                    const response = await apiCall('/flowchart/hierarchy');
-                    const result = await response.json();
-                    console.log('✅ Hierarchy test result:', result);
-                    alert('✅ Hierarchy API test successful! Check console for details.');
-                  } catch (error) {
-                    console.error('❌ Hierarchy test failed:', error);
-                    alert('❌ Hierarchy API test failed: ' + error.message);
-                  }
-                }}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#2196f3',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '11px'
-                }}
-              >
-                Test Hierarchy API
-              </button>
-            </div>
-          </div>
-
           {/* Information Panel */}
           <div style={{ 
             marginTop: '8px', 
@@ -1015,7 +985,7 @@ const ExcelLikeTable = () => {
         </button>
       </div>
 
-      <div className="excel-table-wrapper">
+      <div ref={assessmentTableRef} className="excel-table-wrapper">
         <table className="excel-table">
           <thead>
             <tr>

@@ -10,7 +10,6 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { apiCall } from '../utils/apiUtils';
 import {
   Box,
   Typography,
@@ -47,7 +46,8 @@ import ReactFlow, {
   Handle,
   Position,
   ReactFlowProvider,
-  MiniMap
+  MiniMap,
+  useReactFlow
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './organizational-chart-styles.css';
@@ -473,7 +473,7 @@ const edgeTypes = {
 };
 
 // Main Progressive Organizational Flowchart Component
-const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
+const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) => {
   const [hierarchyData, setHierarchyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -485,6 +485,9 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   const [expandedNodes, setExpandedNodes] = useState(new Set()); // Track expanded nodes
   const [viewportState, setViewportState] = useState({ x: 0, y: 0, zoom: 1 }); // Preserve viewport
   
+  // 🎯 ReactFlow instance for focused viewport control
+  const { fitView, setViewport, getViewport, getNodes } = useReactFlow();
+  
   // Accordion behavior state - track which node is actively expanded per level
   const [accordionState, setAccordionState] = useState(new Map()); // Map of level -> activeNodeId
   const [hiddenSiblings, setHiddenSiblings] = useState(new Set()); // Track nodes hidden by accordion behavior
@@ -494,6 +497,213 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
   
   // Use ref to ensure hierarchy data is always accessible
   const hierarchyDataRef = useRef(null);
+
+  // 🎯 Helper function: Focus viewport on specific parent node and its children with validation
+  const focusOnExpandedArea = useCallback((parentNodeId, childrenIds = []) => {
+    try {
+      const allNodes = getNodes();
+      const parentNode = allNodes.find(node => node.data.objectId === parentNodeId);
+      
+      if (!parentNode) {
+        console.warn(`⚠️ Parent node ${parentNodeId} not found for focused zoom`);
+        return;
+      }
+
+      // First, validate that all child nodes exist and have valid positions
+      // Note: Some children might be hidden by accordion behavior, so only check existing ones
+      const existingChildren = childrenIds.filter(childId => {
+        const childNode = allNodes.find(node => node.id === `child-${childId}`);
+        return childNode; // Node exists in the flow
+      });
+      
+      const invalidChildren = existingChildren.filter(childId => {
+        const childNode = allNodes.find(node => node.id === `child-${childId}`);
+        return !childNode.position || 
+               isNaN(childNode.position.x) || isNaN(childNode.position.y);
+      });
+
+      if (invalidChildren.length > 0) {
+        console.warn(`⚠️ Cannot focus - ${invalidChildren.length} child nodes lack valid positions:`, invalidChildren);
+        return;
+      }
+      
+      console.log(`✅ Found ${existingChildren.length}/${childrenIds.length} children in ReactFlow (${childrenIds.length - existingChildren.length} may be hidden by accordion)`);
+
+      // If no children exist in the flow, just focus on the parent
+      if (existingChildren.length === 0) {
+        console.log(`🎯 No children in flow - focusing on parent node only`);
+        // Update childrenIds to empty array to focus just on parent
+        childrenIds = [];
+      } else {
+        // Update to only include existing children
+        childrenIds = existingChildren;
+      }
+
+      // Validate parent node position
+      if (!parentNode.position || 
+          typeof parentNode.position.x !== 'number' || 
+          typeof parentNode.position.y !== 'number' ||
+          isNaN(parentNode.position.x) || 
+          isNaN(parentNode.position.y)) {
+        console.warn(`⚠️ Parent node ${parentNodeId} has invalid position:`, parentNode.position);
+        return;
+      }
+
+      // Get actual ReactFlow container dimensions with validation
+      const flowContainer = document.querySelector('.react-flow__viewport')?.parentElement;
+      const containerWidth = flowContainer?.clientWidth || 1200;
+      const containerHeight = flowContainer?.clientHeight || 700;
+
+      // Validate container dimensions
+      if (isNaN(containerWidth) || isNaN(containerHeight) || containerWidth <= 0 || containerHeight <= 0) {
+        console.warn(`⚠️ Invalid container dimensions: ${containerWidth}x${containerHeight}`);
+        return;
+      }
+
+      console.log(`📏 Container dimensions: ${containerWidth}x${containerHeight}`);
+
+      // Get parent node position and dimensions (use actual measured dimensions if available)
+      const parentBounds = {
+        x: parentNode.position.x,
+        y: parentNode.position.y,
+        width: parentNode.measured?.width || 320, // Use measured width or fallback
+        height: parentNode.measured?.height || 180 // Use measured height or fallback
+      };
+
+      console.log(`👨‍💼 Parent node bounds:`, parentBounds);
+
+      // Calculate bounding box including all children
+      let minX = parentBounds.x;
+      let maxX = parentBounds.x + parentBounds.width;
+      let minY = parentBounds.y;
+      let maxY = parentBounds.y + parentBounds.height;
+
+      // Include children in bounding box with validation
+      const childNodes = [];
+      childrenIds.forEach(childId => {
+        const childNode = allNodes.find(node => node.id === `child-${childId}`);
+        if (childNode && 
+            childNode.position && 
+            typeof childNode.position.x === 'number' && 
+            typeof childNode.position.y === 'number' &&
+            !isNaN(childNode.position.x) && 
+            !isNaN(childNode.position.y)) {
+          
+          const childWidth = childNode.measured?.width || 320;
+          const childHeight = childNode.measured?.height || 180;
+          
+          // Validate child dimensions
+          if (!isNaN(childWidth) && !isNaN(childHeight) && childWidth > 0 && childHeight > 0) {
+            minX = Math.min(minX, childNode.position.x);
+            maxX = Math.max(maxX, childNode.position.x + childWidth);
+            minY = Math.min(minY, childNode.position.y);
+            maxY = Math.max(maxY, childNode.position.y + childHeight);
+            
+            childNodes.push(childNode);
+          } else {
+            console.warn(`⚠️ Invalid child dimensions for ${childId}:`, { childWidth, childHeight });
+          }
+        } else {
+          console.warn(`⚠️ Invalid child position for ${childId}:`, childNode?.position);
+        }
+      });
+
+      console.log(`👶 Found ${childNodes.length} child nodes with valid positions`);
+
+      // Validate boundary values before creating focus area
+      if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
+        console.warn('⚠️ Invalid boundary values for focus area:', { minX, maxX, minY, maxY });
+        return;
+      }
+
+      // Add generous padding around the focused area (match the target image)
+      const padding = 80; // Increased padding for better visibility
+      const focusArea = {
+        x: minX - padding,
+        y: minY - padding,
+        width: (maxX - minX) + (2 * padding),
+        height: (maxY - minY) + (2 * padding)
+      };
+
+      // Validate focus area dimensions
+      if (isNaN(focusArea.x) || isNaN(focusArea.y) || 
+          isNaN(focusArea.width) || isNaN(focusArea.height) ||
+          focusArea.width <= 0 || focusArea.height <= 0) {
+        console.warn(`⚠️ Invalid focus area:`, focusArea);
+        return;
+      }
+
+      console.log(`🎯 Focus area:`, focusArea);
+
+      // Calculate zoom to fit the focus area with optimal visibility
+      const zoomX = containerWidth / focusArea.width;
+      const zoomY = containerHeight / focusArea.height;
+      
+      // Validate zoom calculations
+      if (isNaN(zoomX) || isNaN(zoomY) || zoomX <= 0 || zoomY <= 0) {
+        console.warn(`⚠️ Invalid zoom calculations:`, { zoomX, zoomY });
+        return;
+      }
+      
+      // Use the smaller zoom to ensure everything fits, but cap it for readability
+      let optimalZoom = Math.min(zoomX, zoomY);
+      
+      // Ensure zoom is within reasonable bounds for node readability
+      optimalZoom = Math.max(0.4, Math.min(optimalZoom, 1.0)); // Between 0.4x and 1.0x
+      
+      console.log(`🔍 Calculated zoom: ${optimalZoom} (zoomX: ${zoomX}, zoomY: ${zoomY})`);
+
+      // Calculate the center point of the focus area with validation
+      const focusCenterX = focusArea.x + (focusArea.width / 2);
+      const focusCenterY = focusArea.y + (focusArea.height / 2);
+
+      // Validate calculated values
+      if (isNaN(focusCenterX) || isNaN(focusCenterY) || isNaN(optimalZoom)) {
+        console.warn(`⚠️ Invalid calculated values:`, { 
+          focusCenterX, focusCenterY, optimalZoom, focusArea 
+        });
+        return;
+      }
+
+      // Calculate viewport position to center the focus area
+      const newViewport = {
+        x: (containerWidth / 2) - (focusCenterX * optimalZoom),
+        y: (containerHeight / 2) - (focusCenterY * optimalZoom),
+        zoom: optimalZoom
+      };
+
+      // Validate final viewport values
+      if (isNaN(newViewport.x) || isNaN(newViewport.y) || isNaN(newViewport.zoom)) {
+        console.warn(`⚠️ Invalid viewport values:`, newViewport);
+        return;
+      }
+
+      console.log(`🎯 NEW VIEWPORT:`, {
+        parentNode: parentNodeId,
+        childrenCount: childrenIds.length,
+        containerDimensions: { width: containerWidth, height: containerHeight },
+        focusArea,
+        focusCenter: { x: focusCenterX, y: focusCenterY },
+        newViewport
+      });
+
+      // Apply the focused viewport with smooth animation
+      try {
+        setViewport(newViewport, { duration: 800 });
+      } catch (viewportError) {
+        console.error('❌ Error setting viewport:', viewportError);
+        // Fallback: try without animation
+        try {
+          setViewport(newViewport, { duration: 0 });
+        } catch (fallbackError) {
+          console.error('❌ Viewport fallback also failed:', fallbackError);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error focusing on expanded area:', error);
+    }
+  }, [getNodes, setViewport]);
   
   // ReactFlow state
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -668,10 +878,11 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       return [...prevNodes, ...newNodes];
     });
 
-    // Add edges with proper hierarchical connections
+    // Add edges with proper hierarchical connections and duplicate prevention
     setTimeout(() => {
       setEdges(prevEdges => {
         const newEdges = [];
+        const existingEdgeIds = new Set(prevEdges.map(edge => edge.id));
         
         // Find the parent node from current nodes state
         setNodes(currentNodes => {
@@ -680,26 +891,29 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
 
           children.forEach((child) => {
             const childId = `child-${child.objectId}`;
+            const edgeId = `edge-${parentNodeFromCurrent.id}-${childId}`;
             
-            // FIXED: Simple, clean edge creation
-            newEdges.push({
-              id: `edge-${parentNodeFromCurrent.id}-${childId}`,
-              source: parentNodeFromCurrent.id,
-              target: childId,
-              type: 'straight',
-              animated: false,
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                width: 8,
-                height: 8,
-                color: '#1976d2'
-              },
-              style: {
-                strokeWidth: 2,
-                stroke: '#1976d2',
-                opacity: 0.8
-              }
-            });
+            // FIXED: Only add edge if it doesn't already exist
+            if (!existingEdgeIds.has(edgeId)) {
+              newEdges.push({
+                id: edgeId,
+                source: parentNodeFromCurrent.id,
+                target: childId,
+                type: 'straight',
+                animated: false,
+                markerEnd: {
+                  type: MarkerType.ArrowClosed,
+                  width: 8,
+                  height: 8,
+                  color: '#1976d2'
+                },
+                style: {
+                  strokeWidth: 2,
+                  stroke: '#1976d2',
+                  opacity: 0.8
+                }
+              });
+            }
           });
           
           return currentNodes; // Return unchanged nodes
@@ -839,19 +1053,32 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           return prevNodes.filter(node => !nodesToRemove.has(node.id));
         });
         
+        // FIXED: Comprehensive edge cleanup when collapsing nodes
         setEdges(prevEdges => {
           const nodesToRemove = new Set();
           
-          // We need to check which nodes are being removed to remove their edges
-          nodes.forEach(node => {
-            if (node.data.parentNodeId === nodeId) {
-              nodesToRemove.add(node.id);
-            }
+          // Find all descendant nodes that will be removed
+          const findDescendants = (nodeId, currentNodes) => {
+            currentNodes.forEach(node => {
+              if (node.data.parentNodeId === nodeId) {
+                nodesToRemove.add(node.id);
+                nodesToRemove.add(`child-${node.data.objectId}`); // Also add child-prefixed version
+                findDescendants(node.data.objectId, currentNodes); // Recursive
+              }
+            });
+          };
+          
+          findDescendants(nodeId, nodes);
+          
+          // Remove edges that connect to or from removed nodes
+          const filteredEdges = prevEdges.filter(edge => {
+            const sourceRemoved = nodesToRemove.has(edge.source);
+            const targetRemoved = nodesToRemove.has(edge.target);
+            return !sourceRemoved && !targetRemoved;
           });
           
-          return prevEdges.filter(edge => 
-            !nodesToRemove.has(edge.source) && !nodesToRemove.has(edge.target)
-          );
+          console.log(`🔗 Removed ${prevEdges.length - filteredEdges.length} edges during collapse`);
+          return filteredEdges;
         });
         
         setExpandedNodes(prev => {
@@ -873,11 +1100,98 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
         )
       );
 
+      // 🎯 FOCUSED ZOOM ON PARENT AND NEW CHILDREN
+      if (shouldExpand) {
+        // Focus viewport specifically on the expanded parent and its new children
+        // Use a longer delay to ensure nodes are fully rendered and measured
+        setTimeout(() => {
+          const nodeData = findNodeInHierarchy(currentHierarchyData.rootNodes, nodeId);
+          const childrenIds = nodeData?.children?.map(child => child.objectId) || [];
+          
+          console.log('🎯 Focusing view on expanded node and children:', {
+            parentId: nodeId,
+            childrenIds: childrenIds,
+            timestamp: new Date().toISOString()
+          });
+          
+          // Try to focus with a retry mechanism in case nodes aren't ready
+          const attemptFocus = (attempt = 1) => {
+            try {
+              // Get currently visible nodes (not hidden by accordion)
+              const currentNodes = getNodes();
+              const rawNodes = nodes; // Also check raw nodes from state
+              
+              console.log(`🔍 DEBUG: ReactFlow getNodes() count: ${currentNodes.length}`);
+              console.log(`🔍 DEBUG: Raw nodes state count: ${rawNodes.length}`);
+              console.log(`🔍 DEBUG: Current ReactFlow nodes:`, currentNodes.map(n => ({ id: n.id, type: n.type, objectId: n.data?.objectId })));
+              console.log(`🔍 DEBUG: Raw state nodes:`, rawNodes.map(n => ({ id: n.id, type: n.type, objectId: n.data?.objectId })));
+              
+              // Filter children to only include those that are actually visible (not hidden)
+              const visibleChildrenIds = childrenIds.filter(childId => 
+                !hiddenSiblings.has(childId.replace('child-', ''))
+              );
+              
+              console.log(`👁️ Visible children filter: ${visibleChildrenIds.length}/${childrenIds.length} children are visible (not hidden by accordion)`);
+              console.log(`🔍 Looking for child nodes with IDs:`, visibleChildrenIds.map(id => `child-${id}`));
+              
+              // Check positions only for visible children
+              const childrenWithPositions = visibleChildrenIds.filter(childId => {
+                const childNode = currentNodes.find(node => node.id === `child-${childId}`) ||
+                                 rawNodes.find(node => node.id === `child-${childId}`);
+                const hasValidPosition = childNode && childNode.position && 
+                       !isNaN(childNode.position.x) && !isNaN(childNode.position.y);
+                
+                // Debug: Log each child's status
+                if (!hasValidPosition) {
+                  const expectedId = `child-${childId}`;
+                  const foundInGetNodes = !!currentNodes.find(node => node.id === expectedId);
+                  const foundInRawNodes = !!rawNodes.find(node => node.id === expectedId);
+                  
+                  console.log(`🔍 Child ${childId}: node=${!!childNode}, position=${childNode?.position}, x=${childNode?.position?.x}, y=${childNode?.position?.y}`);
+                  console.log(`🔍 Child ${childId}: found in getNodes=${foundInGetNodes}, found in rawNodes=${foundInRawNodes}`);
+                }
+                
+                return hasValidPosition;
+              });
+
+              console.log(`🔍 Position check attempt ${attempt}: ${childrenWithPositions.length}/${visibleChildrenIds.length} visible children have valid positions`);
+
+              // Only proceed if all visible children have valid positions
+              if (visibleChildrenIds.length > 0 && childrenWithPositions.length === visibleChildrenIds.length) {
+                focusOnExpandedArea(nodeId, visibleChildrenIds);
+              } else if (visibleChildrenIds.length === 0) {
+                console.warn(`⚠️ No visible children found - accordion may have hidden all siblings`);
+              } else {
+                console.warn(`⏳ Not all visible children have positions yet (${childrenWithPositions.length}/${visibleChildrenIds.length}), retrying...`);
+                if (attempt < 5) { // Increased max attempts
+                  setTimeout(() => attemptFocus(attempt + 1), 300); // Slightly longer delay
+                }
+              }
+            } catch (error) {
+              console.warn(`Focus attempt ${attempt} failed:`, error);
+              if (attempt < 5) {
+                setTimeout(() => attemptFocus(attempt + 1), 300);
+              }
+            }
+          };
+          
+          attemptFocus();
+        }, 500); // Increased delay to ensure DOM updates are complete
+        
+        // Keep the original scroll callback if provided
+        if (onExpandScroll) {
+          setTimeout(() => {
+            console.log('🚀 Additional scroll callback for expanded level:', nodeId);
+            onExpandScroll();
+          }, 1200); // Delayed to happen after focused zoom
+        }
+      }
+
     } catch (error) {
       console.error('Error expanding/collapsing node:', error);
       setError(`Failed to ${shouldExpand ? 'expand' : 'collapse'} node: ${error.message}`);
     }
-  }, []); // No dependencies needed since we use ref for hierarchy data
+  }, [focusOnExpandedArea, onExpandScroll]); // Include focusOnExpandedArea in dependencies
 
   // Initial load on component mount only - always load full hierarchy
   useEffect(() => {
@@ -901,6 +1215,61 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     }
   }, [hierarchyData]); // Run when hierarchyData changes to keep ref in sync
 
+  // 🎯 AUTO FIT-TO-VIEW ON INITIAL LOAD with validation
+  useEffect(() => {
+    if (nodes.length > 0 && !loading && hierarchyData) {
+      // Small delay to ensure DOM is fully rendered
+      const timer = setTimeout(() => {
+        console.log('🚀 Auto-fitting view to initial hierarchy on load');
+        
+        // Validate that nodes have proper positions and dimensions
+        const validNodes = nodes.filter(node => 
+          node.position && 
+          typeof node.position.x === 'number' && 
+          typeof node.position.y === 'number' &&
+          !isNaN(node.position.x) && 
+          !isNaN(node.position.y)
+        );
+        
+        if (validNodes.length === 0) {
+          console.warn('⚠️ Cannot fit view: No nodes with valid positions found');
+          return;
+        }
+        
+        console.log(`✅ Found ${validNodes.length}/${nodes.length} nodes with valid positions`);
+        
+        // Use a more conservative fitView to prevent NaN errors
+        try {
+          fitView({
+            padding: 0.1,
+            includeHiddenNodes: false,
+            minZoom: 0.1,  // Lower minimum to prevent calculation errors
+            maxZoom: 2.0,  // Higher maximum for safety
+            duration: 800,
+            nodes: validNodes  // Only fit to valid nodes
+          });
+        } catch (error) {
+          console.error('❌ FitView error:', error);
+          // Fallback: try without animation
+          try {
+            fitView({
+              padding: 0.1,
+              includeHiddenNodes: false,
+              minZoom: 0.1,
+              maxZoom: 2.0,
+              duration: 0,  // No animation
+              nodes: validNodes
+            });
+          } catch (fallbackError) {
+            console.error('❌ FitView fallback also failed:', fallbackError);
+          }
+        }
+      }, 200); // Increased delay to ensure better DOM rendering
+      
+      return () => clearTimeout(timer);
+    }
+  }, [nodes.length, loading, hierarchyData, fitView]); // Trigger when initial nodes are loaded
+
   // Load organizational hierarchy - now supports both filtered and full view
   const loadTopLevelOnly = async () => {
     setLoading(true);
@@ -910,12 +1279,16 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
 
     try {
       // Always load full organizational hierarchy
-      const endpoint = '/flowchart/hierarchy';
+      const endpoint = '/api/flowchart/hierarchy';
       console.log(`📡 Loading full organizational hierarchy from: ${endpoint}`);
       
-      const response = await apiCall(endpoint);
+      const response = await fetch(endpoint);
       
-      // Response is already checked in apiCall, so we can directly get JSON
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server responded with ${response.status}: ${errorText || 'Unknown error'}`);
+      }
+
       const result = await response.json();
 
       if (!result.success || !result.data) {
@@ -1057,25 +1430,30 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
           }
         });
 
-        // FIXED: Simple, consistent edge creation
-        flowEdges.push({
-          id: `edge-${parentNodeId}-${childNodeId}`,
-          source: parentNodeId,
-          target: childNodeId,
-          type: 'straight',
-          animated: false,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 8,
-            height: 8,
-            color: '#1976d2'
-          },
-          style: {
-            strokeWidth: 2,
-            stroke: '#1976d2',
-            opacity: 0.8
-          }
-        });
+        // FIXED: Edge creation with duplicate prevention
+        const existingEdgeIds = new Set(flowEdges.map(edge => edge.id));
+        const edgeId = `edge-${parentNodeId}-${childNodeId}`;
+        
+        if (!existingEdgeIds.has(edgeId)) {
+          flowEdges.push({
+            id: edgeId,
+            source: parentNodeId,
+            target: childNodeId,
+            type: 'straight',
+            animated: false,
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 8,
+              height: 8,
+              color: '#1976d2'
+            },
+            style: {
+              strokeWidth: 2,
+              stroke: '#1976d2',
+              opacity: 0.8
+            }
+          });
+        }
       });
     }
 
@@ -1104,8 +1482,12 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     setSearching(true);
     
     try {
-      const response = await apiCall(`/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      const response = await fetch(`/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
       const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Search failed');
+      }
 
       console.log(`🔍 Search results for "${searchTerm}":`, result.data);
       setSearchResults(result.data || []);
@@ -1124,11 +1506,15 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     setDetailsDialog(true);
   };
 
-  // Handle refresh
+  // Handle refresh with complete cleanup
   const handleRefresh = () => {
     setExpandedNodes(new Set());
     setHiddenSiblings(new Set()); // Reset accordion state
     setAccordionState(new Map()); // Reset accordion state
+    
+    // Clear all edges to prevent duplicates on reload
+    setEdges([]);
+    
     loadTopLevelOnly();
   };
 
@@ -1145,11 +1531,19 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
     return filtered;
   }, [nodes, hiddenSiblings]);
 
-  // FIXED: Enhanced edge filtering - only show connections between visible nodes
+  // FIXED: Enhanced edge filtering with deduplication - only show connections between visible nodes
   const visibleEdges = React.useMemo(() => {
     const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
     
-    const filteredEdges = edges.filter(edge => {
+    // First, deduplicate edges by ID
+    const uniqueEdges = edges.reduce((acc, edge) => {
+      acc.set(edge.id, edge);
+      return acc;
+    }, new Map());
+    
+    const deduplicatedEdges = Array.from(uniqueEdges.values());
+    
+    const filteredEdges = deduplicatedEdges.filter(edge => {
       // Both source and target must be visible
       const sourceVisible = visibleNodeIds.has(edge.source);
       const targetVisible = visibleNodeIds.has(edge.target);
@@ -1163,12 +1557,15 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
       return edgeVisible;
     });
     
-    // Debug logging to track edge filtering
-    if (edges.length !== filteredEdges.length) {
-      console.log(`🔗 Edge filtering: ${edges.length} total → ${filteredEdges.length} visible (${edges.length - filteredEdges.length} hidden)`);
+    // Debug logging to track edge filtering and deduplication
+    if (edges.length !== deduplicatedEdges.length) {
+      console.log(`🔗 Deduplicated ${edges.length - deduplicatedEdges.length} duplicate edges`);
+    }
+    if (deduplicatedEdges.length !== filteredEdges.length) {
+      console.log(`🔗 Edge filtering: ${deduplicatedEdges.length} total → ${filteredEdges.length} visible (${deduplicatedEdges.length - filteredEdges.length} hidden)`);
       
       // Show which edges were filtered out
-      const hiddenEdges = edges.filter(edge => !filteredEdges.includes(edge));
+      const hiddenEdges = deduplicatedEdges.filter(edge => !filteredEdges.includes(edge));
       console.log(`Hidden edges:`, hiddenEdges.map(e => ({ id: e.id, source: e.source, target: e.target })));
     }
     
@@ -1443,11 +1840,11 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
             edgeTypes={edgeTypes}
             onMove={(event, viewport) => setViewportState(viewport)}
             defaultViewport={viewportState.zoom === 1 ? { x: 0, y: 30, zoom: 0.75 } : viewportState} // Preserve viewport or use initial
-            fitView={false} // FIXED: Prevent automatic fitView during expand operations
+            fitView={false} // Let us control fit-view manually
             fitViewOptions={{
               padding: 0.1,
               includeHiddenNodes: false,
-              minZoom: 0.5,
+              minZoom: 0.3,
               maxZoom: 1.2,
               duration: 800
             }}
@@ -1611,9 +2008,9 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect }) => {
 };
 
 // Wrap in ReactFlowProvider
-const ProgressiveOrganizationalFlowchartWrapper = ({ onPersonSelect }) => (
+const ProgressiveOrganizationalFlowchartWrapper = ({ onPersonSelect, onExpandScroll }) => (
   <ReactFlowProvider>
-    <ProgressiveOrganizationalFlowchart onPersonSelect={onPersonSelect} />
+    <ProgressiveOrganizationalFlowchart onPersonSelect={onPersonSelect} onExpandScroll={onExpandScroll} />
   </ReactFlowProvider>
 );
 

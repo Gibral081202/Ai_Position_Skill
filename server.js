@@ -1,7 +1,3 @@
-// Load environment configuration first
-require('dotenv').config({ path: '.env.production' });
-require('dotenv').config(); // Fallback to .env
-
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
@@ -30,36 +26,13 @@ const upload = multer({
   }
 });
 
-// Request logging middleware
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    console.log(`🌐 API Request: ${req.method} ${req.path} from ${req.ip}`);
-    console.log(`🔗 User-Agent: ${req.get('User-Agent') || 'Unknown'}`);
-  }
-  next();
-});
-
 // Middleware
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? [
-    'http://wecare.techconnect.co.id',
-    'https://wecare.techconnect.co.id',
-    'http://localhost',
-    'https://localhost'
-  ] : true,
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files from the React app build directory at /mining-hr path
-if (process.env.NODE_ENV === 'production') {
-  // Production: Serve static files at /mining-hr path (NGINX handles this)
-  console.log('🏭 Production mode: Static files served by NGINX at /mining-hr/');
-} else {
-  // Development: Serve static files directly
-  app.use(express.static(path.join(__dirname, 'build')));
-}
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, 'build')));
 
 // ==================== ORGANIZATIONAL CHART API ENDPOINTS ====================
 
@@ -657,41 +630,6 @@ app.delete('/api/org-chart/database/clear', async (req, res) => {
   }
 });
 
-// ==================== DEBUG AND HEALTH CHECK ENDPOINTS ====================
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  console.log('💚 Health check requested');
-  res.json({
-    success: true,
-    message: 'HRAI Mining HR API is healthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    version: '1.0.0'
-  });
-});
-
-// Debug endpoint to show all available routes
-app.get('/api/debug/routes', (req, res) => {
-  console.log('🔍 Debug routes requested');
-  const routes = [];
-  
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      routes.push({
-        path: middleware.route.path,
-        methods: Object.keys(middleware.route.methods)
-      });
-    }
-  });
-  
-  res.json({
-    success: true,
-    routes: routes,
-    timestamp: new Date().toISOString()
-  });
-});
-
 // ==================== NEW ENHANCED ORGANIZATIONAL FLOWCHART API ENDPOINTS ====================
 
 /**
@@ -700,9 +638,6 @@ app.get('/api/debug/routes', (req, res) => {
  */
 app.get('/api/flowchart/hierarchy', async (req, res) => {
   console.log('🏢 Received request for organizational flowchart hierarchy');
-  console.log('📍 Request URL:', req.url);
-  console.log('📍 Request path:', req.path);
-  console.log('📍 Request headers:', req.headers);
   
   try {
     const flowchartService = new OrganizationalFlowchartService();
@@ -920,31 +855,15 @@ app.get('/api/health', (req, res) => {
 
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    // In production, NGINX handles static files, so redirect unknown API calls
-    res.status(404).json({ 
-      error: 'API endpoint not found',
-      path: req.path,
-      message: 'This endpoint does not exist. Check the API documentation.'
-    });
-  } else {
-    // In development, serve the React app for client-side routing
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
-  }
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
 // Use PORT environment variable or default to 3050
 const port = process.env.PORT || 3050;
-const host = process.env.HOST || 'localhost';
 
-app.listen(port, host, () => {
-  console.log(`🚀 HRAI server is running on ${host}:${port}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  if (process.env.NODE_ENV === 'production') {
-    console.log(`🌍 Public access: http://wecare.techconnect.co.id/mining-hr/`);
-  } else {
-    console.log(`🌐 Local access: http://localhost:${port}`);
-  }
+app.listen(port, () => {
+  console.log(`🚀 HRAI server is running on port ${port}`);
+  console.log(`🌐 Access the application at: http://localhost:${port}`);
   console.log(`⛏️  Mining Industry HR Position Qualification Assessment System`);
 });
 

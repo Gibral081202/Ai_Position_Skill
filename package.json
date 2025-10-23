@@ -9,15 +9,11 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "server": "NODE_ENV=production node --max-old-space-size=16384 server.js",
+    "server": "node --max-old-space-size=16384 server.js",
     "dev": "react-scripts start",
     "prod": "npm run build && npm run server",
-    "pm2:start": "pm2 start ecosystem.config.js",
-    "pm2:restart": "pm2 restart HRAI-Mining-HR",
-    "pm2:stop": "pm2 stop HRAI-Mining-HR",
-    "pm2:delete": "pm2 delete HRAI-Mining-HR",
-    "deploy:server": "git pull && npm install && npm run build && pm2 restart HRAI-Mining-HR",
-    "logs": "pm2 logs HRAI-Mining-HR"
+    "deploy:local": "npm run build && pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js",
+    "deploy:server": "git pull && npm install && npm run build && pm2 restart HRAI-Mining-HR"
   },
   "dependencies": {
     "@emotion/react": "^11.11.0",

@@ -27,6 +27,7 @@ import {
   DialogActions,
   Collapse
 } from '@mui/material';
+import { apiCall } from '../utils/apiHelper';
 import {
   Search as SearchIcon,
   Refresh as RefreshIcon,
@@ -1279,11 +1280,11 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
     // setHierarchyData(null); // ❌ This was causing the reset
 
     try {
-      // Always load full organizational hierarchy
-      const endpoint = '/api/flowchart/hierarchy';
+      // Always load full organizational hierarchy using API helper
+      const endpoint = '/flowchart/hierarchy';
       console.log(`📡 Loading full organizational hierarchy from: ${endpoint}`);
       
-      const response = await fetch(endpoint);
+      const response = await apiCall(endpoint);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -1490,7 +1491,7 @@ const ProgressiveOrganizationalFlowchart = ({ onPersonSelect, onExpandScroll }) 
     setSearching(true);
     
     try {
-      const response = await fetch(`/api/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
+      const response = await apiCall(`/flowchart/search?q=${encodeURIComponent(searchTerm.trim())}`);
       const result = await response.json();
 
       if (!response.ok) {

@@ -102,7 +102,9 @@ print_info "🏗️  Building React application..."
 # Load environment variables for the build process
 if [ -f ".env.production" ]; then
     print_info "Loading environment variables for build..."
-    export $(grep -v '^#' .env.production | xargs)
+    set -a  # automatically export all variables
+    source .env.production
+    set +a  # turn off automatic export
 fi
 NODE_ENV=production npm run build
 if [ $? -eq 0 ]; then

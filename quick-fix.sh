@@ -21,7 +21,10 @@ fi
 
 # Load environment variables and rebuild
 echo "🏗️ Rebuilding with environment variables..."
-export $(grep -v '^#' .env.production | xargs)
+# Source the environment file safely
+set -a  # automatically export all variables
+source .env.production
+set +a  # turn off automatic export
 NODE_ENV=production npm run build
 
 # Restart PM2

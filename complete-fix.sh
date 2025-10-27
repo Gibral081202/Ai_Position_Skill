@@ -47,7 +47,7 @@ fi
 NODE_ENV=production npm run build
 
 # Check if build was successful and contains API key
-if [ -f "build/static/js/main.*.js" ]; then
+if [ -d "build/static/js" ] && ls build/static/js/main.*.js >/dev/null 2>&1; then
     echo "✅ Build files created"
     # Check if the built files contain a reference to the API key (not the actual key, just a check)
     if grep -q "process.env.REACT_APP_OPENAI_API_KEY" build/static/js/main.*.js 2>/dev/null; then
@@ -57,6 +57,7 @@ if [ -f "build/static/js/main.*.js" ]; then
     fi
 else
     echo "❌ Build files not created"
+    ls -la build/static/js/ 2>/dev/null || echo "Build directory structure not found"
     exit 1
 fi
 

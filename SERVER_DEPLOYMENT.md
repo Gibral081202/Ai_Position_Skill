@@ -103,6 +103,18 @@ curl http://localhost:3050/api/health  # Test API directly
 - **Cause**: Database credentials or network connectivity
 - **Fix**: Check `.env` file and database server status
 
+#### 4. Browser Still Shows Old API Key Error (401 Unauthorized)
+- **Symptom**: Browser shows `your-ope************here` even after successful deployment
+- **Cause**: Browser caching old JavaScript files
+- **Fix**: 
+  ```bash
+  # Force browser cache clear
+  # 1. Hard refresh browser (Ctrl+F5 or Cmd+Shift+R)
+  # 2. Clear browser cache completely
+  # 3. Or add timestamp to force new files:
+  touch /var/www/Ai_Position_Skill/build/static/js/*
+  ```
+
 ## 🔒 Security Notes
 - Environment variables contain sensitive API keys and database credentials
 - The `.env` file should never be committed to Git

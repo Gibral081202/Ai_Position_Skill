@@ -70,7 +70,24 @@ echo "🌐 Building with PUBLIC_URL: $PUBLIC_URL"
 # Build the React application
 npm run build
 
-echo "📁 Setting proper permissions..."
+echo "� Verifying build contains real API key..."
+# Check if the built files contain the placeholder (they shouldn't)
+if grep -r "your-openai-api-key-here" build/ 2>/dev/null; then
+  echo "❌ ERROR: Build still contains placeholder API key!"
+  echo "This indicates the environment variables weren't properly loaded during build."
+  exit 1
+else
+  echo "✅ Build verification passed - no placeholder API keys found"
+fi
+
+# Check that build contains the real API key (first 20 chars)
+if grep -r "sk-proj-KeKhGCoyr4HK" build/ >/dev/null 2>&1; then
+  echo "✅ Real API key found in build files"
+else
+  echo "⚠️ Could not verify real API key in build (this might be normal due to minification)"
+fi
+
+echo "�📁 Setting proper permissions..."
 sudo chown -R www-data:www-data /var/www/Ai_Position_Skill/build/
 sudo chmod -R 755 /var/www/Ai_Position_Skill/build/
 

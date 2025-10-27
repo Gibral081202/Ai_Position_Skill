@@ -43,21 +43,38 @@ Status: online
 4. Start PM2 process: `pm2 start ecosystem.config.js`
 
 ### Regular Deployment Updates
+
+**Option 1: Using deploy script (Recommended)**
 ```bash
-# Run from /var/www/Ai_Position_Skill directory
+cd /var/www/Ai_Position_Skill
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-Or manually:
+**Option 2: Manual deployment**
 ```bash
 cd /var/www/Ai_Position_Skill
 git pull origin main
 npm install
-PUBLIC_URL=/mining-hr/ npm run build
+
+# Load environment variables from .env and build with them
+source .env
+export PUBLIC_URL=/mining-hr/
+export REACT_APP_PUBLIC_URL=/mining-hr/
+npm run build
+
 sudo chown -R www-data:www-data build/
 pm2 restart HRAI-Mining-HR
 ```
+
+**⚠️ CRITICAL: Environment Variables for React Build**
+
+The React app must be built with the actual API keys from your `.env` file. The error you saw (`your-ope************here`) means the React build used placeholder values instead of real API keys.
+
+**To fix this issue:**
+1. Make sure your `.env` file contains the real `REACT_APP_OPENAI_API_KEY`
+2. The React build process must have access to these environment variables
+3. Use `source .env` before running `npm run build` to load the environment variables
 
 ## 🔍 Monitoring & Troubleshooting
 

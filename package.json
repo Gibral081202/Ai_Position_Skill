@@ -6,6 +6,7 @@
   "scripts": {
     "start": "cross-env NODE_OPTIONS=\"--no-deprecation\" react-scripts start",
     "build": "react-scripts build",
+    "build:server": "cross-env NODE_ENV=production PUBLIC_URL=/mining-hr/ REACT_APP_PUBLIC_URL=/mining-hr/ react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "server": "cross-env NODE_OPTIONS=\"--no-deprecation\" node --max-old-space-size=16384 server.js",
@@ -13,7 +14,7 @@
     "dev:clean": "cross-env NODE_OPTIONS=\"--no-deprecation --no-warnings\" react-scripts start",
     "prod": "npm run build && npm run server",
     "deploy:local": "npm run build && pm2 restart ecosystem.config.js || pm2 start ecosystem.config.js",
-    "deploy:server": "git pull && npm install && npm run build && pm2 restart HRAI-Mining-HR"
+    "deploy:server": "git pull && npm install && ./deploy.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.11.0",

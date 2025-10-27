@@ -1,40 +1,41 @@
-// API Configuration for Google Gemini Service
+// API Configuration for OpenAI GPT Service
 // Prefer environment variables for secrets when available
-const ENV_API_KEY = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_GEMINI_API_KEY)
-  ? process.env.REACT_APP_GEMINI_API_KEY
+const ENV_API_KEY = (typeof process !== 'undefined' && process.env && process.env.REACT_APP_OPENAI_API_KEY)
+  ? process.env.REACT_APP_OPENAI_API_KEY
   : undefined;
 
 export const API_CONFIG = {
-  // Google Gemini API endpoint
-  API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+  // OpenAI GPT API endpoint
+  API_URL: 'https://api.openai.com/v1/chat/completions',
   
-  // API Key (prefer env var in production; fallback provided for dev/testing)
-  API_KEY: ENV_API_KEY || 'AIzaSyBiwOLi2PtSl-qndmfy2mxAe_slbFm_EM4',
+  // API Key (MUST be set via environment variable REACT_APP_OPENAI_API_KEY)
+  API_KEY: ENV_API_KEY || (() => {
+    console.error('❌ OpenAI API key not found! Set REACT_APP_OPENAI_API_KEY environment variable.');
+    throw new Error('OpenAI API key is required. Please set REACT_APP_OPENAI_API_KEY environment variable.');
+  })(),
   
-  // Model settings
-  MODEL_NAME: 'gemini-2.5-flash',
+  // Model settings - using gpt-4o-mini (fastest available OpenAI model)
+  MODEL_NAME: 'gpt-4o-mini',
   
   // Rate limiting settings
   RATE_LIMIT_DELAY: 1000, // 1 second between requests (in milliseconds)
   MAX_RETRIES: 3,
   
   // Fallback settings
-  USE_MOCK_DATA_ON_ERROR: false,
-  MOCK_DATA_DELAY: 1000, // Delay to simulate processing (in milliseconds)
+  // No mock data settings - system uses only real GPT-4o-mini API responses
 };
 
 // Error messages
 export const ERROR_MESSAGES = {
-  QUOTA_EXCEEDED: 'API quota exceeded. Using offline data.',
-  RATE_LIMIT: 'Rate limit reached. Please wait before trying again.',
-  NETWORK_ERROR: 'Network error. Using offline data.',
-  INVALID_RESPONSE: 'Invalid response from API. Using offline data.',
-  GENERAL_ERROR: 'An error occurred. Using offline data.',
-  GEMINI_NOT_AVAILABLE: 'Gemini API is not available. Please check your API key and try again.',
+  QUOTA_EXCEEDED: 'Kuota GPT-4o-mini API terlampaui. Silakan tunggu atau periksa billing.',
+  RATE_LIMIT: 'Batas permintaan tercapai. Silakan tunggu sebelum mencoba lagi.',
+  NETWORK_ERROR: 'Kesalahan jaringan saat mengakses GPT-4o-mini API.',
+  INVALID_RESPONSE: 'Format respons dari GPT-4o-mini API tidak valid.',
+  GENERAL_ERROR: 'Terjadi kesalahan dalam mengakses GPT-4o-mini API.',
+  GPT_NOT_AVAILABLE: 'GPT-4o-mini API tidak tersedia. Silakan periksa API key dan coba lagi.',
 };
 
-// Success messages
+// Success messages - only real GPT-4o-mini API responses
 export const SUCCESS_MESSAGES = {
-  MOCK_DATA_USED: 'Using offline assessment data due to API limitations.',
-  MOCK_INSIGHTS_USED: 'Using offline insights data due to API limitations.',
+  API_RESPONSE_SUCCESS: 'Data berhasil diambil dari GPT-4o-mini API.',
 };

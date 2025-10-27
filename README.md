@@ -342,9 +342,9 @@ Connection Layer:
 - **Google Gemini API Key** (for AI functionality) - Free tier available
 
 ### Step 1: Get Google Gemini API Key
-1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Create a new API key for Gemini
-3. Copy your API key (already configured: `AIzaSyBiwOLi2PtSl-qndmfy2mxAe_slbFm_EM4`)
+1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Create a new API key for GPT-4o-mini
+3. Copy your API key and add it to your environment configuration
 
 ### Step 2: Clone and Install
 ```bash
@@ -603,9 +603,9 @@ User Interaction → Form Validation → State Update → API Service → AI Pro
 ### API Configuration (`src/config/apiConfig.js`)
 ```javascript
 export const API_CONFIG = {
-  API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
-  API_KEY: 'AIzaSyBiwOLi2PtSl-qndmfy2mxAe_slbFm_EM4',  // Gemini API key
-  MODEL_NAME: 'gemini-1.5-flash-latest',               // Gemini model
+  API_URL: 'https://api.openai.com/v1/chat/completions',
+  API_KEY: process.env.REACT_APP_OPENAI_API_KEY,       // OpenAI API key from environment
+  MODEL_NAME: 'gpt-4o-mini',                           // GPT-4o-mini model
   RATE_LIMIT_DELAY: 1000,                              // Request throttling
   MAX_RETRIES: 3,                                      // Retry attempts
   USE_MOCK_DATA_ON_ERROR: true,                        // Fallback enable

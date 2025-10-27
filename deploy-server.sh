@@ -99,6 +99,11 @@ fi
 
 # 5. Build the application
 print_info "🏗️  Building React application..."
+# Load environment variables for the build process
+if [ -f ".env.production" ]; then
+    print_info "Loading environment variables for build..."
+    export $(grep -v '^#' .env.production | xargs)
+fi
 NODE_ENV=production npm run build
 if [ $? -eq 0 ]; then
     print_status "Build completed successfully"

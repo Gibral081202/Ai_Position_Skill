@@ -18,6 +18,13 @@ npm install --production
 
 echo "🔧 Building React app with server environment variables..."
 
+# Fix permissions on build directory before building
+echo "🔐 Fixing build directory permissions..."
+if [ -d "build" ]; then
+  sudo chown -R $USER:$USER build/
+  sudo chmod -R 755 build/
+fi
+
 # Check if .env exists, if not create it from .env.production
 if [ ! -f .env ]; then
   echo "📋 Creating .env from .env.production template..."

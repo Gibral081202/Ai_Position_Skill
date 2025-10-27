@@ -8,21 +8,19 @@ export const API_CONFIG = {
   // OpenAI GPT API endpoint
   API_URL: 'https://api.openai.com/v1/chat/completions',
   
-  // API Key (MUST be set via environment variable REACT_APP_OPENAI_API_KEY)
-  API_KEY: ENV_API_KEY || (() => {
-    console.error('❌ OpenAI API key not found! Set REACT_APP_OPENAI_API_KEY environment variable.');
-    throw new Error('OpenAI API key is required. Please set REACT_APP_OPENAI_API_KEY environment variable.');
-  })(),
+  // API Key (must be set via REACT_APP_OPENAI_API_KEY environment variable)
+  API_KEY: ENV_API_KEY || 'your-openai-api-key-here',
   
-  // Model settings - using gpt-4o-mini (fastest available OpenAI model)
+  // Model settings - using GPT-4o mini (fastest available OpenAI model)
   MODEL_NAME: 'gpt-4o-mini',
   
   // Rate limiting settings
   RATE_LIMIT_DELAY: 1000, // 1 second between requests (in milliseconds)
   MAX_RETRIES: 3,
   
-  // Fallback settings
-  // No mock data settings - system uses only real GPT-4o-mini API responses
+  // Fallback settings - DISABLE ALL MOCK DATA
+  USE_MOCK_DATA_ON_ERROR: false, // Never use mock data, always throw errors to UI
+  MOCK_DATA_DELAY: 0 // No delay needed since mock data is disabled
 };
 
 // Error messages

@@ -21,7 +21,7 @@ const ExcelLikeTable = () => {
 
   const [rows, setRows] = useState([
     {
-      id: 1,
+      id: Date.now(), // Use timestamp for unique ID
       positionTitle: '',
       positionLevel: '',
       industry: 'Mining',
@@ -53,7 +53,24 @@ const ExcelLikeTable = () => {
   const [skillsAndToolsOptions, setSkillsAndToolsOptions] = useState(null);
   const [generatingOptions, setGeneratingOptions] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedRowId, setSelectedRowId] = useState(rows[0]?.id || 1);
+  const [selectedRowId, setSelectedRowId] = useState(null);
+  const [assessmentInProgress, setAssessmentInProgress] = useState(new Set()); // Track which rows are being assessed
+
+  // Set initial selectedRowId when rows are initialized
+  React.useEffect(() => {
+    if (!selectedRowId && rows.length > 0) {
+      setSelectedRowId(rows[0].id);
+    }
+
+    // 🔍 DEBUG: Check for duplicate IDs
+    const ids = rows.map(r => r.id);
+    const duplicateIds = ids.filter((id, index) => ids.indexOf(id) !== index);
+    if (duplicateIds.length > 0) {
+      console.error('🚨 DUPLICATE ROW IDs DETECTED:', duplicateIds);
+      console.error('🚨 All row IDs:', ids);
+      console.error('🚨 Rows with duplicates:', rows.filter(r => duplicateIds.includes(r.id)));
+    }
+  }, [rows, selectedRowId]);
 
   // Scroll utilities
   const scrollToSection = (ref, offset = 0) => {
@@ -117,8 +134,18 @@ const ExcelLikeTable = () => {
   const handlePersonSelectFromFlowchart = async ({ name, positionTitle, positionLevel, department }) => {
     console.log('🎯 Staff member clicked:', { name, positionTitle, positionLevel, department });
     
+    // 🔒 PREVENT DUPLICATE STAFF: Check if this staff member already exists
+    const existingStaff = rows.find(r => r.staffName === name && r.positionTitle === positionTitle);
+    if (existingStaff) {
+      console.log('⚠️ Staff member already exists:', name, '- Selecting existing row instead of creating duplicate');
+      setSelectedRowId(existingStaff.id);
+      scrollToAssessmentTable();
+      return;
+    }
+    
     // Create a new row automatically when a staff member is clicked
-    const newId = Math.max(...rows.map(r => r.id)) + 1;
+    // Use timestamp + random to ensure unique IDs
+    const newId = Date.now() + Math.floor(Math.random() * 1000);
     
     // Add new row with the selected person's data
     const newRow = {
@@ -160,19 +187,25 @@ const ExcelLikeTable = () => {
 
     // Add the new row and set it as selected
     setRows(prev => {
+      console.log('📊 Adding new staff row. Current rows count:', prev.length);
+      console.log('🆔 New row ID:', newId, 'Staff:', name);
+      
       const updatedRows = [...prev, newRow];
       
       // Generate assessment automatically for the new row after state update
       setTimeout(() => {
-        console.log('🔄 Starting automatic assessment generation...');
-        console.log('📋 Position data for assessment:', { positionTitle, positionLevel });
-        // Call generateAssessment with a more reliable approach
+        console.log('🔄 AUTO-ASSESSMENT: Starting automatic generation...');
+        console.log('📋 Position data:', { positionTitle, positionLevel });
+        console.log('🔍 Target row ID:', newId);
+        console.log('👤 Staff name:', name);
+        
+        // Use direct assessment generation for new staff (bypassing strict checks)
         if (positionTitle && positionLevel) {
-          generateAssessmentForNewRow(newId, positionTitle, positionLevel);
+          generateAssessmentForNewStaff(newId, positionTitle, positionLevel, name);
         } else {
-          console.warn('⚠️ Missing position data:', { positionTitle, positionLevel });
+          console.warn('⚠️ Missing position data for:', name, { positionTitle, positionLevel });
         }
-      }, 300); // Increased delay to ensure state update
+      }, 800); // Longer delay to ensure proper state update
       
       return updatedRows;
     });
@@ -187,10 +220,26 @@ const ExcelLikeTable = () => {
     console.log('✅ Added new row for staff member:', name, 'Position:', positionTitle, 'Level:', positionLevel);
   };
 
-  const generateAssessment = async (rowId) => {
+  const generateAssessment = async (rowId, forceRegenerate = false) => {
     const row = rows.find(r => r.id === rowId);
     if (!row.positionTitle || !row.positionLevel) return;
 
+    // Check if already in progress
+    if (assessmentInProgress.has(rowId)) {
+      console.log('🚫 Assessment already in progress for row', rowId);
+      return;
+    }
+
+    // 🔒 PREVENT AUTO-REGENERATION: Only skip if assessment exists and it's not forced regeneration
+    if (!forceRegenerate && row.overallAssessment && row.overallAssessment.trim() !== '') {
+      console.log('⚠️ Assessment already exists for row', rowId, '- skipping auto-regeneration (use button to force regenerate)');
+      return;
+    }
+
+    // Mark as in progress
+    setAssessmentInProgress(prev => new Set([...prev, rowId]));
+
+    console.log('🚀 Generating assessment for row:', rowId, 'Position:', row.positionTitle, forceRegenerate ? '(FORCED)' : '(NEW)');
     setLoading(prev => ({ ...prev, [rowId]: true }));
     setError(null);
 
@@ -358,18 +407,51 @@ const ExcelLikeTable = () => {
       setError('Failed to get assessment from Gemini API. Please check your API key/quotas and try again.');
     } finally {
       setLoading(prev => ({ ...prev, [rowId]: false }));
+      // Clear progress flag
+      setAssessmentInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(rowId);
+        return newSet;
+      });
     }
   };
 
   // Generate assessment for newly created row (doesn't depend on state lookup)
   const generateAssessmentForNewRow = async (rowId, positionTitle, positionLevel) => {
-    console.log('🚀 Generating assessment for new row:', { rowId, positionTitle, positionLevel });
+    console.log('🚀 STRICT: Generating assessment ONLY for specified new row:', { rowId, positionTitle, positionLevel });
     
     if (!positionTitle || !positionLevel) {
-      console.warn('⚠️ Missing position data, skipping assessment generation');
+      console.warn('⚠️ Missing position data, aborting assessment generation');
       return;
     }
 
+    // 🔒 ULTIMATE PREVENTION: Check multiple conditions
+    const currentRows = rows; // Get current state
+    const targetRow = currentRows.find(r => r.id === rowId);
+    console.log('🔍 ULTIMATE CHECK - Target row:', targetRow ? `ID: ${targetRow.id}, Staff: ${targetRow.staffName}, HasAssessment: ${!!targetRow.overallAssessment}` : 'NOT FOUND');
+    
+    // Check if already in progress
+    if (assessmentInProgress.has(rowId)) {
+      console.log('🚫 ULTIMATE PREVENTION: Assessment already in progress for row', rowId);
+      return;
+    }
+
+    // Check if target row exists and has assessment
+    if (targetRow && targetRow.overallAssessment && targetRow.overallAssessment.trim() !== '') {
+      console.log('� ULTIMATE PREVENTION: Assessment already exists for row', rowId, '- ABSOLUTE BLOCK');
+      return;
+    }
+
+    // Check if row doesn't exist
+    if (!targetRow) {
+      console.log('🚫 ULTIMATE PREVENTION: Target row not found', rowId);
+      return;
+    }
+
+    // Mark as in progress
+    setAssessmentInProgress(prev => new Set([...prev, rowId]));
+
+    console.log('✅ ULTIMATE APPROVAL: Proceeding with assessment for VERIFIED NEW ROW:', rowId);
     setLoading(prev => ({ ...prev, [rowId]: true }));
     setError(null);
 
@@ -556,6 +638,124 @@ const ExcelLikeTable = () => {
       setError('Failed to get assessment from Gemini API. Please check your API key/quotas and try again.');
     } finally {
       setLoading(prev => ({ ...prev, [rowId]: false }));
+      // Clear progress flag
+      setAssessmentInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(rowId);
+        return newSet;
+      });
+    }
+  };
+
+  // 🚀 AUTO-ASSESSMENT: Generate assessment for newly added staff (bypasses strict checks)
+  const generateAssessmentForNewStaff = async (rowId, positionTitle, positionLevel, staffName) => {
+    console.log('🚀 AUTO-ASSESSMENT: Generating for new staff member:', { rowId, positionTitle, positionLevel, staffName });
+    
+    if (!positionTitle || !positionLevel) {
+      console.warn('⚠️ AUTO-ASSESSMENT: Missing position data, aborting');
+      return;
+    }
+
+    // For new staff, we bypass most checks and generate directly
+    console.log('✅ AUTO-ASSESSMENT: Proceeding with automatic generation for:', staffName);
+    setLoading(prev => ({ ...prev, [rowId]: true }));
+    setError(null);
+
+    try {
+      const formData = {
+        positionName: positionTitle,
+        positionLevel: positionLevel,
+        industry: 'Mining'
+      };
+
+      const assessment = await assessPositionQualifications(formData);
+      
+      if (assessment) {
+        console.log('📊 AUTO-ASSESSMENT: Received assessment for staff:', staffName);
+        
+        // Extract and process assessment data (same logic as other functions)
+        let hardSkills = assessment.assessments?.Skills?.hardSkills || assessment.hardSkills || [];
+        let hardSkillsRatings = assessment.assessments?.Skills?.hardSkillsRatings || assessment.hardSkillsRatings || {};
+        let softSkills = assessment.assessments?.Skills?.softSkills || assessment.softSkills || [];
+        let softSkillsRatings = assessment.assessments?.Skills?.softSkillsRatings || assessment.softSkillsRatings || {};
+        
+        // Extract safety training and technical tools - FIXED: Use correct API structure
+        let safetyTraining = assessment.assessments?.Certifications?.requiredCertifications || 
+                           assessment.assessments?.Certifications?.items || 
+                           assessment.safetyTraining || [];
+        let technicalTools = assessment.assessments?.['Technical Tools']?.requiredTools || 
+                           assessment.assessments?.['Technical Tools']?.items || 
+                           assessment.technicalTools || [];
+        let technicalToolsRatings = assessment.assessments?.['Technical Tools']?.toolRatings || 
+                                  assessment.assessments?.['Technical Tools']?.ratings || 
+                                  assessment.technicalToolsRatings || {};
+
+        console.log('🔧 EXTRACTION CHECK:');
+        console.log('  - safetyTraining extracted:', safetyTraining.length, 'items');
+        console.log('  - technicalTools extracted:', technicalTools.length, 'items');
+        console.log('  - technicalToolsRatings extracted:', Object.keys(technicalToolsRatings).length, 'ratings');
+
+        // Create the complete row data update
+        const newRowData = {
+          overallAssessment: assessment.overallAssessment || '',
+          qualifications: {
+            essential: assessment.recommendedQualifications?.essential || assessment.qualifications?.essential || [],
+            preferred: assessment.recommendedQualifications?.preferred || assessment.qualifications?.preferred || [],
+            niceToHave: assessment.recommendedQualifications?.niceToHave || assessment.qualifications?.niceToHave || []
+          },
+          assessments: {
+            education: {
+              justification: assessment.assessments?.Education?.justification || '',
+              recommendation: assessment.assessments?.Education?.recommendation || ''
+            },
+            experience: {
+              justification: assessment.assessments?.Experience?.justification || '',
+              recommendation: assessment.assessments?.Experience?.recommendation || ''
+            },
+            skills: {
+              justification: assessment.assessments?.Skills?.justification || '',
+              recommendation: assessment.assessments?.Skills?.recommendation || '',
+              hardSkills: hardSkills,
+              hardSkillsRatings: hardSkillsRatings,
+              softSkills: softSkills,
+              softSkillsRatings: softSkillsRatings
+            },
+            certifications: {
+              justification: assessment.assessments?.Certifications?.justification || '',
+              recommendation: assessment.assessments?.Certifications?.recommendation || ''
+            },
+            safetyTraining: {
+              justification: assessment.assessments?.['Safety Training']?.justification || '',
+              recommendation: assessment.assessments?.['Safety Training']?.recommendation || ''
+            },
+            technicalTools: {
+              justification: assessment.assessments?.['Technical Tools']?.justification || '',
+              recommendation: assessment.assessments?.['Technical Tools']?.recommendation || ''
+            }
+          },
+          safetyTraining: safetyTraining,
+          technicalTools: technicalTools,
+          technicalToolsRatings: technicalToolsRatings
+        };
+        
+        console.log('🎯 AUTO-ASSESSMENT: Updating row data for staff:', staffName);
+        
+        // Update only the specific row
+        setRows(prev => prev.map(r => 
+          r.id === rowId 
+            ? { ...r, ...newRowData }
+            : r
+        ));
+        
+        console.log('✅ AUTO-ASSESSMENT: Completed for staff:', staffName);
+      } else {
+        console.warn('⚠️ AUTO-ASSESSMENT: No assessment data received');
+      }
+    } catch (error) {
+      console.error('❌ AUTO-ASSESSMENT: Error for staff:', staffName, error);
+      setError('Failed to generate automatic assessment. You can use the Generate Assessment button manually.');
+    } finally {
+      setLoading(prev => ({ ...prev, [rowId]: false }));
     }
   };
 
@@ -719,7 +919,8 @@ const ExcelLikeTable = () => {
   };
 
   const addNewRow = () => {
-    const newId = Math.max(...rows.map(r => r.id)) + 1;
+    // Use timestamp + random to ensure unique IDs (same as staff selection)
+    const newId = Date.now() + Math.floor(Math.random() * 1000);
     setRows(prev => [...prev, {
       id: newId,
       positionTitle: '',
@@ -1088,11 +1289,12 @@ const ExcelLikeTable = () => {
                           )}
                         </div>
                         <button
-                          className="excel-button generate-button"
-                          onClick={() => generateAssessment(row.id)}
+                          className={`excel-button ${row.overallAssessment ? 'regenerate-button' : 'generate-button'}`}
+                          onClick={() => generateAssessment(row.id, true)} // Force regeneration when button clicked
                           disabled={!row.positionTitle || !row.positionLevel || loading[row.id]}
+                          title={row.overallAssessment ? 'Assessment already exists - click to regenerate' : 'Generate new assessment'}
                         >
-                          Generate Assessment
+                          {row.overallAssessment ? 'Regenerate Assessment' : 'Generate Assessment'}
                         </button>
                         {row.overallAssessment && (
                           <div className="assessment-text">

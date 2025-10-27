@@ -11,6 +11,9 @@
 # Production
 /build
 
+# Environment files (contains sensitive API keys)
+.env
+
 # Misc
 .DS_Store
 .env.local

@@ -151,32 +151,29 @@ const extractAndRepairJSON = (response) => {
   return jsonString;
 };
 
-// Call Gemini API
+// Call OpenAI GPT API
 const callGeminiAPI = async (prompt) => {
-  const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+  const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Authorization': `Bearer ${API_KEY}`
     },
     body: JSON.stringify({
-      contents: [
+      model: MODEL_NAME,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert HR professional specializing in mining industry position assessment. Always return valid JSON responses only, no additional text.'
+        },
         {
           role: 'user',
-          parts: [
-            {
-              text: prompt
-            }
-          ]
+          content: prompt
         }
       ],
-      generationConfig: {
-        temperature: 0.3,
-        topK: 40,
-        topP: 0.9,
-        maxOutputTokens: 8192,
-        stopSequences: [],
-        responseMimeType: "application/json"
-      }
+      temperature: 0.3,
+      max_tokens: 8192,
+      response_format: { type: "json_object" }
     })
   });
 
@@ -187,12 +184,12 @@ const callGeminiAPI = async (prompt) => {
 
   const data = await response.json();
   
-  // Gemini returns response in candidates array
-  if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
-    return data.candidates[0].content.parts[0].text;
+  // OpenAI returns response in choices array
+  if (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+    return data.choices[0].message.content;
   }
   
-  throw new Error('Invalid response format from Gemini API');
+  throw new Error('Invalid response format from OpenAI API');
 };
 
 // Mock data generators (fallback when API fails) - Mining Industry Focus

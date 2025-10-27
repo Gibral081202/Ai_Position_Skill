@@ -330,6 +330,21 @@
   max-width: 140px;
 }
 
+/* Regenerate button styling - Different color to indicate existing assessment */
+.regenerate-button {
+  font-size: 11px;
+  padding: 6px 12px;
+  margin-bottom: 6px;
+  width: 100%;
+  max-width: 140px;
+  background-color: #f57c00 !important; /* Orange color for regeneration */
+  border: 1px solid #ef6c00;
+}
+
+.regenerate-button:hover {
+  background-color: #ef6c00 !important;
+}
+
 .excel-title {
   font-size: 18px;
   font-weight: bold;

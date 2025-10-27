@@ -3,8 +3,50 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AppBar, Toolbar, Typography, Box } from '@mui/material';
 import { Assessment } from '@mui/icons-material';
-import ExcelLikeTable from './components/ExcelLikeTable';
 import './excel-theme.css';
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ p: 3 }}>
+          <Typography variant="h4" color="error" gutterBottom>
+            ⚠️ Something went wrong
+          </Typography>
+          <Typography variant="body1" gutterBottom>
+            The application encountered an error. Please check the console for details.
+          </Typography>
+          <details style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '10px', marginTop: '10px' }}>
+            <summary>Error Details</summary>
+            {this.state.error && this.state.error.toString()}
+            <br />
+            {this.state.errorInfo.componentStack}
+          </details>
+        </Box>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const theme = createTheme({
   palette: {
@@ -26,6 +68,9 @@ const theme = createTheme({
   },
 });
 
+// Lazy load the ExcelLikeTable component
+const ExcelLikeTable = React.lazy(() => import('./components/ExcelLikeTable'));
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -43,7 +88,15 @@ function App() {
 
       {/* Main Content */}
       <Box sx={{ minHeight: 'calc(100vh - 64px)' }}>
-        <ExcelLikeTable />
+        <ErrorBoundary>
+          <React.Suspense fallback={
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+              <Typography variant="h6">Loading application...</Typography>
+            </Box>
+          }>
+            <ExcelLikeTable />
+          </React.Suspense>
+        </ErrorBoundary>
       </Box>
     </ThemeProvider>
   );
